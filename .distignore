@@ -1,0 +1,8 @@
+# Files kept out of the WordPress.org SVN release (used by deploy tools such as
+# 10up/action-wordpress-plugin-deploy).
+/.git
+/.github
+/.wordpress-org
+.gitignore
+.distignore
+README.md

@@ -1,0 +1,161 @@
+/*
+ * HTML Page Publisher – Forms: base styles for styles=page forms.
+ *
+ * The form plugin's own theme is off; the landing page's CSS styles the form
+ * through the class/id carried over from the original <form>. These rules
+ * only fill gaps. Layout rules use :where() (zero specificity) so any rule in
+ * the page wins; the functional rules below keep hidden things hidden.
+ */
+
+/* Functional: what the form plugins' CSS normally hides. */
+.htmlpp-forms-page-styles .gform_validation_container,
+.htmlpp-forms-page-styles .gfield--type-honeypot,
+.htmlpp-forms-page-styles .gform_hidden,
+.htmlpp-forms-page-styles .gfield--type-hidden,
+.htmlpp-forms-page-styles .gfield_visibility_hidden,
+.htmlpp-forms-page-styles .wpforms-field-hp,
+.htmlpp-forms-page-styles .wpcf7 .hidden-fields-container,
+.htmlpp-forms-page-styles .gform_required_legend:empty,
+.htmlpp-forms-page-styles .gform_heading:not(:has(.gform_title, .gform_description, .gform_required_legend:not(:empty))) {
+	display: none !important;
+}
+
+.htmlpp-forms-page-styles .screen-reader-text,
+.htmlpp-forms-page-styles .gform_validation_errors .gform-icon,
+.htmlpp-forms-page-styles .wpforms-screen-reader-element {
+	position: absolute !important;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* Layout of the plugins' field wrappers. */
+:where(.htmlpp-forms-page-styles) :where(.gform_fields, .wpforms-field-container) {
+	display: block;
+}
+
+:where(.htmlpp-forms-page-styles) :where(.gfield, .wpforms-field, fieldset) {
+	min-width: 0;
+	margin: 0 0 1em;
+	padding: 0;
+	border: 0;
+}
+
+:where(.htmlpp-forms-page-styles) :where(.gfield_label, .wpforms-field-label, legend) {
+	display: block;
+	padding: 0;
+}
+
+:where(.htmlpp-forms-page-styles) :where(input:not([type="checkbox"], [type="radio"], [type="submit"], [type="button"], [type="hidden"]), select, textarea) {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 100%;
+	font: inherit;
+}
+
+/* Name field (first + last) side by side. */
+:where(.htmlpp-forms-page-styles) :where(.ginput_complex, .wpforms-field-row) {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75em;
+}
+
+:where(.htmlpp-forms-page-styles) :where(.ginput_complex > span, .wpforms-field-row-block) {
+	flex: 1 1 10em;
+}
+
+/* Radio and checkbox choices. */
+:where(.htmlpp-forms-page-styles) :where(.gfield_checkbox, .gfield_radio, .wpforms-field ul) {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+:where(.htmlpp-forms-page-styles) :where(.gchoice, .wpforms-field li, .wpcf7-list-item) {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4em;
+	margin: 0 1.25em 0.35em 0;
+}
+
+:where(.htmlpp-forms-page-styles) :where(.gchoice label, .wpforms-field li label, .wpcf7-list-item label, .ginput_container_consent label) {
+	display: inline;
+	margin: 0;
+}
+
+:where(.htmlpp-forms-page-styles) :where(.ginput_container_consent) {
+	display: flex;
+	align-items: center;
+	gap: 0.5em;
+}
+
+/* Sub-labels and descriptions. */
+:where(.htmlpp-forms-page-styles) :where(.gform-field-label--type-sub, .gfield_description, .wpforms-field-sublabel, .wpforms-field-description) {
+	display: block;
+	font-size: 0.85em;
+	opacity: 0.8;
+}
+
+:where(.htmlpp-forms-page-styles) :where(.gfield_required, .wpforms-required-label) {
+	margin-left: 0.25em;
+	font-weight: normal;
+	font-size: 0.85em;
+	opacity: 0.85;
+}
+
+/*
+ * Validation messages. The page's background is unknown (light or dark), so
+ * messages are light-red tags that stay readable on either.
+ */
+:where(.htmlpp-forms-page-styles) :where(.gfield_validation_message, .validation_message, label.wpforms-error, em.wpforms-error, .wpcf7-not-valid-tip) {
+	display: inline-block;
+	margin-top: 0.4em;
+	padding: 0.15em 0.55em;
+	border-radius: 0.35em;
+	background: #fef2f2;
+	color: #b91c1c;
+	font-size: 0.85em;
+	font-weight: 600;
+	font-style: normal;
+}
+
+:where(.htmlpp-forms-page-styles) :where(.gform_validation_errors, .wpforms-error-container, .wpcf7 form.invalid .wpcf7-response-output, .wpcf7 form.unaccepted .wpcf7-response-output, .wpcf7 form.failed .wpcf7-response-output, .wpcf7 form.aborted .wpcf7-response-output, .wpcf7 form.spam .wpcf7-response-output) {
+	margin: 0 0 1em;
+	padding: 0.75em 1em;
+	border: 1px solid #fecaca;
+	border-radius: 0.5em;
+	background: #fef2f2;
+	color: #991b1b;
+}
+
+:where(.htmlpp-forms-page-styles) :where(.gform_validation_errors h2) {
+	color: inherit;
+}
+
+:where(.htmlpp-forms-page-styles) :where(.wpcf7 form.sent .wpcf7-response-output) {
+	margin: 1em 0 0;
+	padding: 0.75em 1em;
+	border-radius: 0.5em;
+	background: #f0fdf4;
+	color: #166534;
+}
+
+:where(.htmlpp-forms-page-styles) :where(.gform_validation_errors h2) {
+	margin: 0;
+	font-size: 1em;
+}
+
+:where(.htmlpp-forms-page-styles) :where(.gform_confirmation_message, .wpforms-confirmation-container, .wpforms-confirmation-container-full) {
+	padding: 1em 0;
+	font-size: 1.05em;
+}
+
+:where(.htmlpp-forms-page-styles) :where(.gform_footer, .wpforms-submit-container) {
+	margin-top: 1em;
+	padding: 0;
+}
