@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name:       HTML Page Publisher – Forms
+ * Plugin Name:       Forms for HTML Page Publisher
  * Description:       Embed Gravity Forms, Contact Form 7 or WPForms in pages published with HTML Page Publisher, and convert raw HTML forms into them.
- * Version:           0.5.0
+ * Version:           0.6.0
  * Requires at least: 5.9
  * Requires PHP:      7.4
  * Requires Plugins:  html-page-publisher
@@ -10,14 +10,14 @@
  * Author URI:        https://xcast3d.com
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:       htmlpp-forms
+ * Text Domain:       forms-for-html-page-publisher
  *
  * @package HTMLPP_Forms
  */
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'HTMLPP_FORMS_VERSION', '0.5.0' );
+define( 'HTMLPP_FORMS_VERSION', '0.6.0' );
 define( 'HTMLPP_FORMS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 
 require_once HTMLPP_FORMS_PLUGIN_DIR . 'includes/class-htmlpp-forms-adapter.php';

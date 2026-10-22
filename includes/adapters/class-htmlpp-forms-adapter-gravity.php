@@ -209,7 +209,7 @@ class HTMLPP_Forms_Adapter_Gravity extends HTMLPP_Forms_Adapter {
 				$gf['checkboxLabel'] = $field['checkbox_label'];
 				$gf['choices']       = array(
 					array(
-						'text'       => __( 'Checked', 'htmlpp-forms' ),
+						'text'       => __( 'Checked', 'forms-for-html-page-publisher' ),
 						'value'      => '1',
 						'isSelected' => false,
 						'price'      => '',
@@ -218,18 +218,18 @@ class HTMLPP_Forms_Adapter_Gravity extends HTMLPP_Forms_Adapter {
 				$gf['inputs']        = array(
 					array(
 						'id'    => $id . '.1',
-						'label' => __( 'Consent', 'htmlpp-forms' ),
+						'label' => __( 'Consent', 'forms-for-html-page-publisher' ),
 						'name'  => '',
 					),
 					array(
 						'id'       => $id . '.2',
-						'label'    => __( 'Text', 'htmlpp-forms' ),
+						'label'    => __( 'Text', 'forms-for-html-page-publisher' ),
 						'name'     => '',
 						'isHidden' => true,
 					),
 					array(
 						'id'       => $id . '.3',
-						'label'    => __( 'Description', 'htmlpp-forms' ),
+						'label'    => __( 'Description', 'forms-for-html-page-publisher' ),
 						'name'     => '',
 						'isHidden' => true,
 					),
@@ -265,11 +265,11 @@ class HTMLPP_Forms_Adapter_Gravity extends HTMLPP_Forms_Adapter {
 					$notification_id => array(
 						'id'       => $notification_id,
 						'isActive' => true,
-						'name'     => __( 'Admin Notification', 'htmlpp-forms' ),
+						'name'     => __( 'Admin Notification', 'forms-for-html-page-publisher' ),
 						'event'    => 'form_submission',
 						'toType'   => 'email',
 						'to'       => '{admin_email}',
-						'subject'  => __( 'New submission from', 'htmlpp-forms' ) . ' {form_title}',
+						'subject'  => __( 'New submission from', 'forms-for-html-page-publisher' ) . ' {form_title}',
 						'message'  => '{all_fields}',
 					),
 				),

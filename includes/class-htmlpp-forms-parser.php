@@ -129,7 +129,7 @@ class HTMLPP_Forms_Parser {
 			'method'       => $el ? strtolower( $el->getAttribute( 'method' ) ? $el->getAttribute( 'method' ) : 'get' ) : 'get',
 			'class'        => $el ? self::classes( $el->getAttribute( 'class' ) ) : '',
 			'id'           => $el ? sanitize_html_class( $el->getAttribute( 'id' ) ) : '',
-			'button'       => __( 'Submit', 'htmlpp-forms' ),
+			'button'       => __( 'Submit', 'forms-for-html-page-publisher' ),
 			'button_class' => '',
 			'fields'       => array(),
 		);
@@ -299,7 +299,7 @@ class HTMLPP_Forms_Parser {
 		$field['checkbox_label'] = $text;
 		$field['choices']        = array();
 		if ( $field['label'] === $text ) {
-			$field['label'] = __( 'Consent', 'htmlpp-forms' );
+			$field['label'] = __( 'Consent', 'forms-for-html-page-publisher' );
 		}
 	}
 
@@ -316,7 +316,7 @@ class HTMLPP_Forms_Parser {
 		return array(
 			'html_type'      => $html_type,
 			'type'           => self::$kinds[ $html_type ],
-			'label'          => '' !== $label ? $label : __( 'Untitled', 'htmlpp-forms' ),
+			'label'          => '' !== $label ? $label : __( 'Untitled', 'forms-for-html-page-publisher' ),
 			'name'           => (string) $name,
 			'required'       => (bool) $required,
 			'placeholder'    => '',

@@ -165,7 +165,7 @@ class HTMLPP_Forms_Adapter_CF7 extends HTMLPP_Forms_Adapter {
 		foreach ( $form['fields'] as $field ) {
 			if ( 'hidden' === $field['type'] ) {
 				/* translators: %s: field name. */
-				$notes[] = sprintf( __( 'Hidden field “%s” is filled from the URL query string (default:get).', 'htmlpp-forms' ), $field['name'] );
+				$notes[] = sprintf( __( 'Hidden field “%s” is filled from the URL query string (default:get).', 'forms-for-html-page-publisher' ), $field['name'] );
 			}
 		}
 		return $notes;
@@ -196,7 +196,7 @@ class HTMLPP_Forms_Adapter_CF7 extends HTMLPP_Forms_Adapter {
 
 		$mail                       = $contact_form->prop( 'mail' );
 		$mail['subject']            = '[_site_title] ' . $title;
-		$mail['body']               = implode( "\n", $body ) . "\n\n-- \n" . __( 'Sent from', 'htmlpp-forms' ) . ' [_url]';
+		$mail['body']               = implode( "\n", $body ) . "\n\n-- \n" . __( 'Sent from', 'forms-for-html-page-publisher' ) . ' [_url]';
 		$mail['additional_headers'] = '' !== $email ? 'Reply-To: [' . $email . ']' : '';
 
 		$contact_form->set_properties(
@@ -208,7 +208,7 @@ class HTMLPP_Forms_Adapter_CF7 extends HTMLPP_Forms_Adapter {
 
 		$form_id = (int) $contact_form->save();
 		if ( ! $form_id ) {
-			return new WP_Error( 'htmlpp_forms_cf7', __( 'Contact Form 7 could not save the form.', 'htmlpp-forms' ) );
+			return new WP_Error( 'htmlpp_forms_cf7', __( 'Contact Form 7 could not save the form.', 'forms-for-html-page-publisher' ) );
 		}
 		return $form_id;
 	}

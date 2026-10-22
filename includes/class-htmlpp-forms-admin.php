@@ -94,14 +94,14 @@ class HTMLPP_Forms_Admin {
 	 */
 	public function add_menu() {
 		$count = HTMLPP_Forms_Converter::flagged_count();
-		$label = __( 'Detect Forms', 'htmlpp-forms' );
+		$label = __( 'Detect Forms', 'forms-for-html-page-publisher' );
 		if ( $count ) {
 			$label .= sprintf( ' <span class="awaiting-mod">%d</span>', $count );
 		}
 
 		add_submenu_page(
 			HTMLPP_Admin::PAGE_SLUG,
-			__( 'Detect Forms', 'htmlpp-forms' ),
+			__( 'Detect Forms', 'forms-for-html-page-publisher' ),
 			$label,
 			HTMLPP_Plugin::capability(),
 			self::PAGE_SLUG,
@@ -126,12 +126,12 @@ class HTMLPP_Forms_Admin {
 			esc_html(
 				sprintf(
 					/* translators: %d: number of pages. */
-					_n( '%d page contains an HTML form that is not connected to a form plugin.', '%d pages contain HTML forms that are not connected to a form plugin.', $count, 'htmlpp-forms' ),
+					_n( '%d page contains an HTML form that is not connected to a form plugin.', '%d pages contain HTML forms that are not connected to a form plugin.', $count, 'forms-for-html-page-publisher' ),
 					$count
 				)
 			),
 			esc_url( self::url() ),
-			esc_html__( 'Review in Detect Forms', 'htmlpp-forms' )
+			esc_html__( 'Review in Detect Forms', 'forms-for-html-page-publisher' )
 		);
 	}
 
@@ -154,7 +154,7 @@ class HTMLPP_Forms_Admin {
 		$target  = isset( $_POST['target'] ) ? sanitize_key( wp_unslash( $_POST['target'] ) ) : '';
 		$targets = $this->targets();
 		if ( ! isset( $targets[ $target ] ) ) {
-			wp_die( esc_html__( 'You are not allowed to create forms in that form plugin.', 'htmlpp-forms' ), 403 );
+			wp_die( esc_html__( 'You are not allowed to create forms in that form plugin.', 'forms-for-html-page-publisher' ), 403 );
 		}
 		$adapter = $targets[ $target ];
 
@@ -199,14 +199,14 @@ class HTMLPP_Forms_Admin {
 		$targets = $this->targets();
 		?>
 		<div class="wrap htmlpp-forms">
-			<h1><?php esc_html_e( 'Detect Forms', 'htmlpp-forms' ); ?></h1>
-			<p><?php esc_html_e( 'Pages below contain HTML forms that do not submit anywhere in WordPress. Converting creates a form with the detected fields in the form plugin you choose and replaces that form in the page with a placeholder. The previous version is kept in the page’s history.', 'htmlpp-forms' ); ?></p>
+			<h1><?php esc_html_e( 'Detect Forms', 'forms-for-html-page-publisher' ); ?></h1>
+			<p><?php esc_html_e( 'Pages below contain HTML forms that do not submit anywhere in WordPress. Converting creates a form with the detected fields in the form plugin you choose and replaces that form in the page with a placeholder. The previous version is kept in the page’s history.', 'forms-for-html-page-publisher' ); ?></p>
 			<?php $this->render_notice(); ?>
 			<?php if ( ! $this->forms->available_adapters() ) : ?>
-				<div class="notice notice-warning inline"><p><?php esc_html_e( 'Activate Gravity Forms, Contact Form 7 or WPForms to convert forms.', 'htmlpp-forms' ); ?></p></div>
+				<div class="notice notice-warning inline"><p><?php esc_html_e( 'Activate Gravity Forms, Contact Form 7 or WPForms to convert forms.', 'forms-for-html-page-publisher' ); ?></p></div>
 			<?php endif; ?>
 			<?php if ( ! $results ) : ?>
-				<div class="notice notice-success inline"><p><?php esc_html_e( 'No HTML forms found. All pages are clear.', 'htmlpp-forms' ); ?></p></div>
+				<div class="notice notice-success inline"><p><?php esc_html_e( 'No HTML forms found. All pages are clear.', 'forms-for-html-page-publisher' ); ?></p></div>
 			<?php endif; ?>
 			<?php foreach ( $results as $result ) : ?>
 				<?php $this->render_page( $result['page'], $result['forms'], $targets ); ?>
@@ -266,7 +266,7 @@ class HTMLPP_Forms_Admin {
 			esc_html(
 				sprintf(
 					/* translators: 1: form plugin name, 2: form ID, 3: form title, 4: page slug. */
-					__( 'Created %1$s form #%2$d “%3$s” and placed it in “%4$s”.', 'htmlpp-forms' ),
+					__( 'Created %1$s form #%2$d “%3$s” and placed it in “%4$s”.', 'forms-for-html-page-publisher' ),
 					$adapter->label(),
 					$notice['form_id'],
 					$notice['title'],
@@ -274,11 +274,11 @@ class HTMLPP_Forms_Admin {
 				)
 			),
 			esc_url( $adapter->edit_url( $notice['form_id'] ) ),
-			esc_html__( 'Edit form', 'htmlpp-forms' ),
+			esc_html__( 'Edit form', 'forms-for-html-page-publisher' ),
 			esc_url( HTMLPP_Storage::public_page_url( $notice['slug'] ) ),
-			esc_html__( 'View page', 'htmlpp-forms' ),
+			esc_html__( 'View page', 'forms-for-html-page-publisher' ),
 			esc_url( HTMLPP_Admin::edit_url( $notice['slug'] ) ),
-			esc_html__( 'Undo from page history', 'htmlpp-forms' )
+			esc_html__( 'Undo from page history', 'forms-for-html-page-publisher' )
 		);
 	}
 
@@ -297,10 +297,10 @@ class HTMLPP_Forms_Admin {
 				<small>
 					<code><?php echo esc_html( $page['slug'] ); ?></code>
 					<?php if ( 'draft' === $page['status'] ) : ?>
-						— <?php esc_html_e( 'Draft', 'htmlpp-forms' ); ?>
+						— <?php esc_html_e( 'Draft', 'forms-for-html-page-publisher' ); ?>
 					<?php endif; ?>
-					· <a href="<?php echo esc_url( $page['preview_url'] ? $page['preview_url'] : $page['url'] ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'View', 'htmlpp-forms' ); ?></a>
-					· <a href="<?php echo esc_url( $page['edit_url'] ); ?>"><?php esc_html_e( 'Edit HTML', 'htmlpp-forms' ); ?></a>
+					· <a href="<?php echo esc_url( $page['preview_url'] ? $page['preview_url'] : $page['url'] ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'View', 'forms-for-html-page-publisher' ); ?></a>
+					· <a href="<?php echo esc_url( $page['edit_url'] ); ?>"><?php esc_html_e( 'Edit HTML', 'forms-for-html-page-publisher' ); ?></a>
 				</small>
 			</h2>
 			<?php foreach ( $forms as $form ) : ?>
@@ -322,7 +322,7 @@ class HTMLPP_Forms_Admin {
 		$confirm = $form['external']
 			? sprintf(
 				/* translators: %s: external host name. */
-				__( 'This form currently sends data to %s. Converting replaces it, and that service will no longer receive submissions from this page. Continue?', 'htmlpp-forms' ),
+				__( 'This form currently sends data to %s. Converting replaces it, and that service will no longer receive submissions from this page. Continue?', 'forms-for-html-page-publisher' ),
 				$form['external']
 			)
 			: '';
@@ -332,7 +332,7 @@ class HTMLPP_Forms_Admin {
 			<h3>
 				<?php
 				/* translators: 1: form number, 2: total forms on the page. */
-				echo esc_html( sprintf( __( 'Form %1$d of %2$d', 'htmlpp-forms' ), $form['index'] + 1, $total ) );
+				echo esc_html( sprintf( __( 'Form %1$d of %2$d', 'forms-for-html-page-publisher' ), $form['index'] + 1, $total ) );
 				?>
 			</h3>
 			<p class="htmlpp-forms-meta">
@@ -340,7 +340,7 @@ class HTMLPP_Forms_Admin {
 				echo esc_html(
 					sprintf(
 						/* translators: 1: number of fields, 2: submit button text. */
-						_n( '%1$d field · button “%2$s”', '%1$d fields · button “%2$s”', count( $form['fields'] ), 'htmlpp-forms' ),
+						_n( '%1$d field · button “%2$s”', '%1$d fields · button “%2$s”', count( $form['fields'] ), 'forms-for-html-page-publisher' ),
 						count( $form['fields'] ),
 						$form['button']
 					)
@@ -351,16 +351,16 @@ class HTMLPP_Forms_Admin {
 					<span class="htmlpp-forms-external dashicons-before dashicons-warning">
 						<?php
 						/* translators: %s: external host name. */
-						echo esc_html( sprintf( __( 'Posts to external service: %s', 'htmlpp-forms' ), $form['external'] ) );
+						echo esc_html( sprintf( __( 'Posts to external service: %s', 'forms-for-html-page-publisher' ), $form['external'] ) );
 						?>
 					</span>
 				<?php elseif ( '' !== $form['action'] && '#' !== $form['action'] ) : ?>
 					<?php
 					/* translators: %s: form action URL. */
-					echo esc_html( sprintf( __( 'Action: %s', 'htmlpp-forms' ), $form['action'] ) );
+					echo esc_html( sprintf( __( 'Action: %s', 'forms-for-html-page-publisher' ), $form['action'] ) );
 					?>
 				<?php else : ?>
-					<?php esc_html_e( 'No working backend', 'htmlpp-forms' ); ?>
+					<?php esc_html_e( 'No working backend', 'forms-for-html-page-publisher' ); ?>
 				<?php endif; ?>
 			</p>
 
@@ -368,10 +368,10 @@ class HTMLPP_Forms_Admin {
 				<table class="widefat striped">
 					<thead>
 						<tr>
-							<th><?php esc_html_e( 'Label', 'htmlpp-forms' ); ?></th>
-							<th><?php esc_html_e( 'Field type', 'htmlpp-forms' ); ?></th>
-							<th><?php esc_html_e( 'Required', 'htmlpp-forms' ); ?></th>
-							<th><?php esc_html_e( 'HTML name', 'htmlpp-forms' ); ?></th>
+							<th><?php esc_html_e( 'Label', 'forms-for-html-page-publisher' ); ?></th>
+							<th><?php esc_html_e( 'Field type', 'forms-for-html-page-publisher' ); ?></th>
+							<th><?php esc_html_e( 'Required', 'forms-for-html-page-publisher' ); ?></th>
+							<th><?php esc_html_e( 'HTML name', 'forms-for-html-page-publisher' ); ?></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -386,7 +386,7 @@ class HTMLPP_Forms_Admin {
 									<?php endif; ?>
 								</td>
 								<td><?php echo esc_html( self::kind_label( $field['type'] ) ); ?> <small>(<?php echo esc_html( $field['html_type'] ); ?>)</small></td>
-								<td><?php echo $field['required'] ? esc_html__( 'Yes', 'htmlpp-forms' ) : '—'; ?></td>
+								<td><?php echo $field['required'] ? esc_html__( 'Yes', 'forms-for-html-page-publisher' ) : '—'; ?></td>
 								<td><code><?php echo esc_html( $field['name'] ); ?></code></td>
 							</tr>
 						<?php endforeach; ?>
@@ -404,7 +404,7 @@ class HTMLPP_Forms_Admin {
 					<?php endif; ?>
 				<?php endforeach; ?>
 			<?php else : ?>
-				<p><?php esc_html_e( 'No supported fields were found in this form.', 'htmlpp-forms' ); ?></p>
+				<p><?php esc_html_e( 'No supported fields were found in this form.', 'forms-for-html-page-publisher' ); ?></p>
 			<?php endif; ?>
 
 			<?php if ( $targets && $form['fields'] ) : ?>
@@ -416,23 +416,23 @@ class HTMLPP_Forms_Admin {
 					<?php wp_nonce_field( self::ACTION . '_' . $page['slug'] ); ?>
 					<?php if ( count( $targets ) > 1 ) : ?>
 						<?php $select_id = 'htmlpp-forms-target-' . $page['slug'] . '-' . $form['index']; ?>
-						<label for="<?php echo esc_attr( $select_id ); ?>"><?php esc_html_e( 'Convert to', 'htmlpp-forms' ); ?></label>
+						<label for="<?php echo esc_attr( $select_id ); ?>"><?php esc_html_e( 'Convert to', 'forms-for-html-page-publisher' ); ?></label>
 						<select class="htmlpp-forms-target" id="<?php echo esc_attr( $select_id ); ?>" name="target">
 							<?php foreach ( $targets as $adapter ) : ?>
 								<option value="<?php echo esc_attr( $adapter->id() ); ?>"><?php echo esc_html( $adapter->label() ); ?></option>
 							<?php endforeach; ?>
 						</select>
-						<?php submit_button( __( 'Convert', 'htmlpp-forms' ), 'primary', 'submit', false ); ?>
+						<?php submit_button( __( 'Convert', 'forms-for-html-page-publisher' ), 'primary', 'submit', false ); ?>
 					<?php else : ?>
 						<input type="hidden" name="target" value="<?php echo esc_attr( $first ); ?>">
 						<?php
 						/* translators: %s: form plugin name. */
-						submit_button( sprintf( __( 'Convert to %s', 'htmlpp-forms' ), reset( $targets )->label() ), 'primary', 'submit', false );
+						submit_button( sprintf( __( 'Convert to %s', 'forms-for-html-page-publisher' ), reset( $targets )->label() ), 'primary', 'submit', false );
 						?>
 					<?php endif; ?>
 				</form>
 			<?php elseif ( ! $targets ) : ?>
-				<p><em><?php esc_html_e( 'You need permission to edit page HTML and to create forms in an active form plugin to convert this form.', 'htmlpp-forms' ); ?></em></p>
+				<p><em><?php esc_html_e( 'You need permission to edit page HTML and to create forms in an active form plugin to convert this form.', 'forms-for-html-page-publisher' ); ?></em></p>
 			<?php endif; ?>
 		</div>
 		<?php
@@ -447,18 +447,18 @@ class HTMLPP_Forms_Admin {
 	private static function kind_label( $kind ) {
 		if ( ! self::$kind_labels ) {
 			self::$kind_labels = array(
-				'text'     => __( 'Text', 'htmlpp-forms' ),
-				'email'    => __( 'Email', 'htmlpp-forms' ),
-				'tel'      => __( 'Phone', 'htmlpp-forms' ),
-				'url'      => __( 'Website', 'htmlpp-forms' ),
-				'number'   => __( 'Number', 'htmlpp-forms' ),
-				'date'     => __( 'Date', 'htmlpp-forms' ),
-				'hidden'   => __( 'Hidden', 'htmlpp-forms' ),
-				'textarea' => __( 'Paragraph text', 'htmlpp-forms' ),
-				'select'   => __( 'Drop-down', 'htmlpp-forms' ),
-				'radio'    => __( 'Radio buttons', 'htmlpp-forms' ),
-				'checkbox' => __( 'Checkboxes', 'htmlpp-forms' ),
-				'consent'  => __( 'Consent', 'htmlpp-forms' ),
+				'text'     => __( 'Text', 'forms-for-html-page-publisher' ),
+				'email'    => __( 'Email', 'forms-for-html-page-publisher' ),
+				'tel'      => __( 'Phone', 'forms-for-html-page-publisher' ),
+				'url'      => __( 'Website', 'forms-for-html-page-publisher' ),
+				'number'   => __( 'Number', 'forms-for-html-page-publisher' ),
+				'date'     => __( 'Date', 'forms-for-html-page-publisher' ),
+				'hidden'   => __( 'Hidden', 'forms-for-html-page-publisher' ),
+				'textarea' => __( 'Paragraph text', 'forms-for-html-page-publisher' ),
+				'select'   => __( 'Drop-down', 'forms-for-html-page-publisher' ),
+				'radio'    => __( 'Radio buttons', 'forms-for-html-page-publisher' ),
+				'checkbox' => __( 'Checkboxes', 'forms-for-html-page-publisher' ),
+				'consent'  => __( 'Consent', 'forms-for-html-page-publisher' ),
 			);
 		}
 		return isset( self::$kind_labels[ $kind ] ) ? self::$kind_labels[ $kind ] : $kind;

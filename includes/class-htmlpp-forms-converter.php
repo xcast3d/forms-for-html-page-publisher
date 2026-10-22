@@ -40,11 +40,11 @@ class HTMLPP_Forms_Converter {
 
 		$forms = HTMLPP_Forms_Parser::find_forms( $html );
 		if ( ! isset( $forms[ $index ] ) || ! hash_equals( $forms[ $index ]['hash'], (string) $hash ) ) {
-			return new WP_Error( 'htmlpp_forms_changed', __( 'The page changed since it was scanned. Review the form again before converting.', 'htmlpp-forms' ) );
+			return new WP_Error( 'htmlpp_forms_changed', __( 'The page changed since it was scanned. Review the form again before converting.', 'forms-for-html-page-publisher' ) );
 		}
 		$form = $forms[ $index ];
 		if ( ! $form['fields'] ) {
-			return new WP_Error( 'htmlpp_forms_empty', __( 'No supported fields were found in this form.', 'htmlpp-forms' ) );
+			return new WP_Error( 'htmlpp_forms_empty', __( 'No supported fields were found in this form.', 'forms-for-html-page-publisher' ) );
 		}
 
 		// Number forms by position in the page, counting forms already
@@ -62,7 +62,7 @@ class HTMLPP_Forms_Converter {
 		$title = '' !== $page['title'] ? $page['title'] : $page['slug'];
 		if ( $total > 1 ) {
 			/* translators: 1: page title, 2: form number on the page. */
-			$title = sprintf( __( '%1$s — form %2$d', 'htmlpp-forms' ), $title, $number );
+			$title = sprintf( __( '%1$s — form %2$d', 'forms-for-html-page-publisher' ), $title, $number );
 		}
 
 		$form_id = $adapter->create_form( $form, $title );

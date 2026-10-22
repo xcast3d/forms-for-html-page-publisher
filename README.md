@@ -1,4 +1,4 @@
-# HTML Page Publisher – Forms
+# Forms for HTML Page Publisher
 
 A WordPress add-on for [HTML Page Publisher](https://wordpress.org/plugins/html-page-publisher/) that puts working **Gravity Forms**, **Contact Form 7** or **WPForms** forms into static landing pages, and converts the raw `<form>` elements that AI-generated pages ship with into real forms.
 
@@ -44,7 +44,7 @@ wp htmlpp forms placeholders --problems
 
 ## Installation
 
-Download this repository as a ZIP (or clone it) into `wp-content/plugins/htmlpp-forms`, then activate **HTML Page Publisher – Forms**.
+Download this repository as a ZIP (or clone it) into `wp-content/plugins/forms-for-html-page-publisher`, then activate **Forms for HTML Page Publisher**. Or zip the plugin folder (named `forms-for-html-page-publisher`) and use Plugins → Add New → Upload Plugin.
 
 ## Documentation
 

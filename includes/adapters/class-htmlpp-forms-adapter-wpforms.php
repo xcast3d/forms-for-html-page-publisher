@@ -212,11 +212,11 @@ class HTMLPP_Forms_Adapter_WPForms extends HTMLPP_Forms_Adapter {
 		$notes = array();
 		if ( $as_text ) {
 			/* translators: %s: comma-separated field labels. */
-			$notes[] = sprintf( __( 'WPForms Lite has no Phone, Website or Date fields; these become text fields: %s.', 'htmlpp-forms' ), implode( ', ', $as_text ) );
+			$notes[] = sprintf( __( 'WPForms Lite has no Phone, Website or Date fields; these become text fields: %s.', 'forms-for-html-page-publisher' ), implode( ', ', $as_text ) );
 		}
 		if ( $skipped ) {
 			/* translators: %s: comma-separated field names. */
-			$notes[] = sprintf( __( 'WPForms Lite has no Hidden field; these are skipped: %s.', 'htmlpp-forms' ), implode( ', ', $skipped ) );
+			$notes[] = sprintf( __( 'WPForms Lite has no Hidden field; these are skipped: %s.', 'forms-for-html-page-publisher' ), implode( ', ', $skipped ) );
 		}
 		return $notes;
 	}
@@ -228,7 +228,7 @@ class HTMLPP_Forms_Adapter_WPForms extends HTMLPP_Forms_Adapter {
 		$forms   = wpforms()->obj( 'form' );
 		$form_id = $forms->add( $title, array(), array( 'builder' => false ) ); // Adds default notification + confirmation.
 		if ( ! $form_id ) {
-			return new WP_Error( 'htmlpp_forms_wpforms', __( 'WPForms could not create the form.', 'htmlpp-forms' ) );
+			return new WP_Error( 'htmlpp_forms_wpforms', __( 'WPForms could not create the form.', 'forms-for-html-page-publisher' ) );
 		}
 
 		$data   = $forms->get( $form_id, array( 'content_only' => true ) );

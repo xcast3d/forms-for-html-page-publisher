@@ -1,10 +1,10 @@
-=== HTML Page Publisher – Forms ===
+=== Forms for HTML Page Publisher ===
 Contributors: xcastaneda
 Tags: gravity forms, contact form 7, wpforms, landing page, static html
 Requires at least: 5.9
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.5.0
+Stable tag: 0.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -151,6 +151,9 @@ Extend `HTMLPP_Forms_Adapter` (form_exists, render, create_form, delete_form, ed
 * File inputs, color pickers and custom widgets are not converted; forms are detected in the raw source, so a `<form>` inside a `<script>` string or HTML comment would also be listed.
 
 == Changelog ==
+
+= 0.6.0 =
+* Renamed to Forms for HTML Page Publisher (slug, folder and text domain `forms-for-html-page-publisher`). Placeholders, hooks and WP-CLI commands are unchanged. Reactivate the plugin after updating, since its folder name changed.
 
 = 0.5.0 =
 * WP-CLI: `wp htmlpp forms plugins|detect|convert|placeholders`.

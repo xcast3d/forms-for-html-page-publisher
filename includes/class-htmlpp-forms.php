@@ -62,7 +62,7 @@ class HTMLPP_Forms {
 			return;
 		}
 		if ( ! class_exists( 'HTMLPP_Plugin' ) ) {
-			self::dependency_notice( __( 'HTML Page Publisher – Forms needs HTML Page Publisher to be active.', 'htmlpp-forms' ) );
+			self::dependency_notice( __( 'Forms for HTML Page Publisher needs HTML Page Publisher to be active.', 'forms-for-html-page-publisher' ) );
 			return;
 		}
 
@@ -74,7 +74,7 @@ class HTMLPP_Forms {
 		}
 
 		if ( ! self::$instance->available_adapters() ) {
-			self::dependency_notice( __( 'HTML Page Publisher – Forms needs Gravity Forms, Contact Form 7 or WPForms to be active.', 'htmlpp-forms' ) );
+			self::dependency_notice( __( 'Forms for HTML Page Publisher needs Gravity Forms, Contact Form 7 or WPForms to be active.', 'forms-for-html-page-publisher' ) );
 		}
 	}
 
@@ -492,13 +492,13 @@ class HTMLPP_Forms {
 	private static function unavailable( array $placeholder, $adapter, $preview ) {
 		if ( ! $adapter ) {
 			/* translators: 1: placeholder plugin key, 2: form ID. */
-			$message = sprintf( __( 'Unknown form plugin “%1$s” for form %2$d.', 'htmlpp-forms' ), $placeholder['adapter'], $placeholder['form_id'] );
+			$message = sprintf( __( 'Unknown form plugin “%1$s” for form %2$d.', 'forms-for-html-page-publisher' ), $placeholder['adapter'], $placeholder['form_id'] );
 		} elseif ( ! $adapter->is_available() ) {
 			/* translators: 1: form plugin name, 2: form ID. */
-			$message = sprintf( __( '%1$s is not active, so form %2$d could not be displayed.', 'htmlpp-forms' ), $adapter->label(), $placeholder['form_id'] );
+			$message = sprintf( __( '%1$s is not active, so form %2$d could not be displayed.', 'forms-for-html-page-publisher' ), $adapter->label(), $placeholder['form_id'] );
 		} else {
 			/* translators: 1: form plugin name, 2: form ID. */
-			$message = sprintf( __( '%1$s form %2$d could not be displayed. Check that it exists and is active.', 'htmlpp-forms' ), $adapter->label(), $placeholder['form_id'] );
+			$message = sprintf( __( '%1$s form %2$d could not be displayed. Check that it exists and is active.', 'forms-for-html-page-publisher' ), $adapter->label(), $placeholder['form_id'] );
 		}
 
 		if ( $preview ) {
