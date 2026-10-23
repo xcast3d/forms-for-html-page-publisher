@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name:       Forms for HTML Page Publisher
- * Description:       Embed Gravity Forms, Contact Form 7 or WPForms in pages published with HTML Page Publisher, and convert raw HTML forms into them.
+ * Description:       Add-on for HTML Page Publisher: turns the static forms in your landing pages into working Gravity Forms, Contact Form 7 or WPForms forms.
  * Version:           0.6.0
  * Requires at least: 5.9
  * Requires PHP:      7.4
