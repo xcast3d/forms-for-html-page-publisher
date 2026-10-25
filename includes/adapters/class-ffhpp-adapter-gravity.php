@@ -144,7 +144,7 @@ class FFHPP_Adapter_Gravity extends FFHPP_Adapter {
 	 */
 	public function after_render( array $form_ids ) {
 		// Localize gform_theme_config etc.; normally done on wp_enqueue_scripts.
-		do_action( 'gform_output_config', array( 'form_ids' => $form_ids ) );
+		do_action( 'gform_output_config', array( 'form_ids' => $form_ids ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Gravity Forms' own hook.
 	}
 
 	/**

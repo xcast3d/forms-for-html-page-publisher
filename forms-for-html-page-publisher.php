@@ -3,7 +3,7 @@
  * Plugin Name:       Forms for HTML Page Publisher
  * Plugin URI:        https://github.com/xcast3d/forms-for-html-page-publisher
  * Description:       Add-on for HTML Page Publisher: turns the static forms in your landing pages into working Gravity Forms, Contact Form 7 or WPForms forms.
- * Version:           0.7.0
+ * Version:           1.0.0
  * Requires at least: 5.9
  * Requires PHP:      7.4
  * Requires Plugins:  html-page-publisher
@@ -18,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'FFHPP_VERSION', '0.7.0' );
+define( 'FFHPP_VERSION', '1.0.0' );
 define( 'FFHPP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'FFHPP_MIN_HTMLPP', '1.5.2' );
 

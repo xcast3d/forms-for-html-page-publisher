@@ -1,14 +1,14 @@
 === Forms for HTML Page Publisher ===
 Contributors: xcastaneda
-Tags: gravity forms, contact form 7, wpforms, landing page, static html
+Tags: forms, landing page, static html, contact form, html
 Requires at least: 5.9
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.7.0
+Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Add-on for HTML Page Publisher: turns the static forms in your landing pages into working Gravity Forms, Contact Form 7 or WPForms forms.
+Turn static landing-page forms into working Gravity Forms, Contact Form 7, or WPForms forms while keeping the page's design.
 
 == Description ==
 
@@ -112,6 +112,53 @@ Converted forms are titled after the page, with "— form N" (by position in the
 
 Open an issue at https://github.com/xcast3d/forms-for-html-page-publisher/issues with your WordPress, HTML Page Publisher and form plugin versions. For problems with HTML Page Publisher itself (uploading or publishing pages), use its support forum: https://wordpress.org/support/plugin/html-page-publisher/
 
+== Installation ==
+
+1. Install and activate **HTML Page Publisher** 1.5.2 or later.
+2. Install and activate at least one supported form plugin: Gravity Forms, Contact Form 7, or WPForms.
+3. Install and activate **Forms for HTML Page Publisher**.
+4. Upload a landing page with HTML Page Publisher.
+5. Go to **HTML Pages → Detect Forms** to review and convert its static forms.
+
+To use an existing form instead, edit the landing page HTML and insert one of the placeholder comments shown above.
+
+== Frequently Asked Questions ==
+
+= Which form plugins are supported? Do I need a paid version? =
+
+Gravity Forms 2.9 or later, Contact Form 7, and WPForms Lite or Pro are supported. Gravity Forms requires its own paid license. Contact Form 7 and WPForms Lite are free. WPForms Lite does not include Phone, Website, Date, or Hidden fields, so those are converted to text fields or skipped; the review screen explains any differences before conversion.
+
+= Will converting a form change my landing page's design? =
+
+Converted forms use `styles=page` by default so the landing page's CSS remains in control. The original form's class, ID, headings, introductory content, button classes, and content after the button are retained around the new form. Exact field markup comes from the selected form plugin, so selectors that depend on the original form's direct-child structure may need adjustment.
+
+= Can I undo a conversion? =
+
+Yes. Conversion saves the page through HTML Page Publisher, which keeps the previous version. Open the page in HTML Page Publisher and restore the earlier version from its version history. The form created in the form plugin is not removed automatically when you restore the page.
+
+= Why is conversion disabled? =
+
+Conversion requires permission to edit the published HTML and permission to create forms in the selected form plugin. HTML Page Publisher respects `DISALLOW_FILE_EDIT` and `DISALLOW_FILE_MODS`; when either setting disables page editing, form conversion is disabled too. On multisite, the user may also need the `unfiltered_html` capability.
+
+= Where are submissions stored? =
+
+Submission behavior comes from the selected form plugin. Gravity Forms stores entries. WPForms Pro stores entries; WPForms Lite requires Lite Connect or an upgrade for entry storage. Contact Form 7 sends email and does not store entries unless you add a plugin such as Flamingo. Confirm that outgoing email works on your site.
+
+= What happens if the add-on or form plugin is deactivated? =
+
+The landing page continues to load, but placeholders cannot render their forms. On a published page they become invisible HTML comments; a draft preview shows an administrator-facing warning. Reactivate the required plugin or restore the page's earlier version.
+
+= Is this an official HTML Page Publisher add-on? =
+
+No. Forms for HTML Page Publisher is independently made and supported by Xavier Castaneda. Use this plugin's GitHub issue tracker for support rather than asking the HTML Page Publisher author.
+
+== Screenshots ==
+
+1. A landing page's static form, now a working Contact Form 7 form that keeps the page's design.
+2. Pages with unconnected HTML forms are flagged after upload.
+3. Detect Forms lists each form's fields, button, and destination before you convert.
+4. The created form is a normal Gravity Forms, Contact Form 7, or WPForms form.
+
 == How it integrates with HTML Page Publisher ==
 
 Uses only HTML Page Publisher's public hooks and page service (version 1.5.2 or later):
@@ -157,7 +204,18 @@ Filters and actions used the `htmlpp_forms_` prefix before 0.7.0 (for example `h
 * The page's `label` rules also reach the labels of radio and checkbox choices, which may make them bolder than in the original.
 * File inputs, color pickers and custom widgets are not converted; forms are detected in the raw source, so a `<form>` inside a `<script>` string or HTML comment would also be listed.
 
+== Upgrade Notice ==
+
+= 1.0.0 =
+First public release. Requires HTML Page Publisher 1.5.2 or later.
+
 == Changelog ==
+
+= 1.0.0 =
+* First public release.
+* Detect and convert static HTML forms to Gravity Forms, Contact Form 7, or WPForms.
+* Preserve landing-page styling with `styles=page` and version-backed undo.
+* Render existing forms through explicit placeholders and provide WP-CLI commands.
 
 = 0.7.0 =
 * Requires HTML Page Publisher 1.5.2 or later. The add-on now uses only its public hooks and page service.
