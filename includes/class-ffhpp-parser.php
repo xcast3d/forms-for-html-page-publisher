@@ -2,7 +2,7 @@
 /**
  * Detects HTML <form> elements in a page and describes their fields.
  *
- * @package HTMLPP_Forms
+ * @package FFHPP
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -19,7 +19,7 @@ defined( 'ABSPATH' ) || exit;
  * text, email, tel, url, number, date, hidden, textarea, select, radio,
  * checkbox, consent.
  */
-class HTMLPP_Forms_Parser {
+class FFHPP_Parser {
 
 	/**
 	 * A complete <form>…</form>. HTML forms cannot nest, so lazy matching
@@ -139,7 +139,7 @@ class HTMLPP_Forms_Parser {
 
 		$button = $xpath->query( './/button[@type="submit" or not(@type)] | .//input[@type="submit"]', $el )->item( 0 );
 		if ( $button ) {
-			$text = 'input' === $button->nodeName ? $button->getAttribute( 'value' ) : self::text( $button->textContent );
+			$text = self::text( 'input' === $button->nodeName ? $button->getAttribute( 'value' ) : $button->textContent );
 			if ( '' !== $text ) {
 				$result['button'] = $text;
 			}
@@ -175,10 +175,10 @@ class HTMLPP_Forms_Parser {
 				continue;
 			}
 
-			$label = 'hidden' === $type ? $name : self::label( $control, $xpath );
+			$label = 'hidden' === $type ? self::text( $name ) : self::label( $control, $xpath );
 			$field = self::field( $type, $label, $name, $required );
 
-			$field['placeholder'] = $control->getAttribute( 'placeholder' );
+			$field['placeholder'] = self::text( $control->getAttribute( 'placeholder' ) );
 			if ( 'textarea' === $type && $control->getAttribute( 'rows' ) ) {
 				$field['rows'] = absint( $control->getAttribute( 'rows' ) );
 			}
@@ -290,7 +290,8 @@ class HTMLPP_Forms_Parser {
 		 *
 		 * @param string $pattern Regular expression.
 		 */
-		$pattern = (string) apply_filters( 'htmlpp_forms_consent_pattern', '/\b(agree|consent|accept|privacy|terms|policy|opt[\s-]?in)\b/i' );
+		$pattern = apply_filters_deprecated( 'htmlpp_forms_consent_pattern', array( '/\b(agree|consent|accept|privacy|terms|policy|opt[\s-]?in)\b/i' ), '0.7.0', 'ffhpp_consent_pattern' );
+		$pattern = (string) apply_filters( 'ffhpp_consent_pattern', $pattern );
 		if ( ! preg_match( $pattern, $text ) ) {
 			return;
 		}
@@ -387,13 +388,15 @@ class HTMLPP_Forms_Parser {
 	}
 
 	/**
-	 * Collapse whitespace.
+	 * Plain text for labels, choices, placeholders and button text: tags
+	 * removed (text such as "&lt;b&gt;" decodes to markup, and form plugins
+	 * may print labels as HTML) and whitespace collapsed.
 	 *
 	 * @param string $text Text.
 	 * @return string
 	 */
 	private static function text( $text ) {
-		return trim( preg_replace( '/\s+/u', ' ', (string) $text ) );
+		return trim( preg_replace( '/\s+/u', ' ', wp_strip_all_tags( (string) $text ) ) );
 	}
 
 	/**

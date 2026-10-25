@@ -3,7 +3,7 @@
  * Plugin Name:       Forms for HTML Page Publisher
  * Plugin URI:        https://github.com/xcast3d/forms-for-html-page-publisher
  * Description:       Add-on for HTML Page Publisher: turns the static forms in your landing pages into working Gravity Forms, Contact Form 7 or WPForms forms.
- * Version:           0.6.0
+ * Version:           0.7.0
  * Requires at least: 5.9
  * Requires PHP:      7.4
  * Requires Plugins:  html-page-publisher
@@ -13,22 +13,26 @@
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       forms-for-html-page-publisher
  *
- * @package HTMLPP_Forms
+ * @package FFHPP
  */
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'HTMLPP_FORMS_VERSION', '0.6.0' );
-define( 'HTMLPP_FORMS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( 'FFHPP_VERSION', '0.7.0' );
+define( 'FFHPP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( 'FFHPP_MIN_HTMLPP', '1.5.2' );
 
-require_once HTMLPP_FORMS_PLUGIN_DIR . 'includes/class-htmlpp-forms-adapter.php';
-require_once HTMLPP_FORMS_PLUGIN_DIR . 'includes/adapters/class-htmlpp-forms-adapter-gravity.php';
-require_once HTMLPP_FORMS_PLUGIN_DIR . 'includes/adapters/class-htmlpp-forms-adapter-cf7.php';
-require_once HTMLPP_FORMS_PLUGIN_DIR . 'includes/adapters/class-htmlpp-forms-adapter-wpforms.php';
-require_once HTMLPP_FORMS_PLUGIN_DIR . 'includes/class-htmlpp-forms-parser.php';
-require_once HTMLPP_FORMS_PLUGIN_DIR . 'includes/class-htmlpp-forms-converter.php';
-require_once HTMLPP_FORMS_PLUGIN_DIR . 'includes/class-htmlpp-forms-admin.php';
-require_once HTMLPP_FORMS_PLUGIN_DIR . 'includes/class-htmlpp-forms.php';
+require_once FFHPP_PLUGIN_DIR . 'includes/class-ffhpp-adapter.php';
+require_once FFHPP_PLUGIN_DIR . 'includes/adapters/class-ffhpp-adapter-gravity.php';
+require_once FFHPP_PLUGIN_DIR . 'includes/adapters/class-ffhpp-adapter-cf7.php';
+require_once FFHPP_PLUGIN_DIR . 'includes/adapters/class-ffhpp-adapter-wpforms.php';
+require_once FFHPP_PLUGIN_DIR . 'includes/class-ffhpp-parser.php';
+require_once FFHPP_PLUGIN_DIR . 'includes/class-ffhpp-converter.php';
+require_once FFHPP_PLUGIN_DIR . 'includes/class-ffhpp-admin.php';
+require_once FFHPP_PLUGIN_DIR . 'includes/class-ffhpp-plugin.php';
 
-// After HTML Page Publisher (plugins_loaded, 10) has built its renderer.
-add_action( 'plugins_loaded', array( 'HTMLPP_Forms', 'boot' ), 20 );
+// HTML Page Publisher reads this once while booting (plugins_loaded, 10).
+add_filter( 'htmlpp_serve_priority', array( 'FFHPP_Plugin', 'serve_priority' ) );
+
+// After HTML Page Publisher (plugins_loaded, 10) has booted.
+add_action( 'plugins_loaded', array( 'FFHPP_Plugin', 'boot' ), 20 );

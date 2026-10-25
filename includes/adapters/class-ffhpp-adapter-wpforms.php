@@ -2,7 +2,7 @@
 /**
  * WPForms adapter.
  *
- * @package HTMLPP_Forms
+ * @package FFHPP
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
  * and settings are normally printed on wp_footer, which never fires on
  * published pages; the adapter calls the same public methods directly.
  */
-class HTMLPP_Forms_Adapter_WPForms extends HTMLPP_Forms_Adapter {
+class FFHPP_Adapter_WPForms extends FFHPP_Adapter {
 
 	/**
 	 * {@inheritDoc}
@@ -120,8 +120,10 @@ class HTMLPP_Forms_Adapter_WPForms extends HTMLPP_Forms_Adapter {
 	 * @return array
 	 */
 	public function textarea_rows( $properties, $field ) {
-		if ( ! empty( $field['htmlpp_rows'] ) ) {
-			$properties['inputs']['primary']['attr']['rows'] = absint( $field['htmlpp_rows'] );
+		// Forms converted before 0.7.0 stored the value as htmlpp_rows.
+		$rows = ! empty( $field['ffhpp_rows'] ) ? $field['ffhpp_rows'] : ( isset( $field['htmlpp_rows'] ) ? $field['htmlpp_rows'] : 0 );
+		if ( $rows ) {
+			$properties['inputs']['primary']['attr']['rows'] = absint( $rows );
 		}
 		return $properties;
 	}
@@ -228,7 +230,7 @@ class HTMLPP_Forms_Adapter_WPForms extends HTMLPP_Forms_Adapter {
 		$forms   = wpforms()->obj( 'form' );
 		$form_id = $forms->add( $title, array(), array( 'builder' => false ) ); // Adds default notification + confirmation.
 		if ( ! $form_id ) {
-			return new WP_Error( 'htmlpp_forms_wpforms', __( 'WPForms could not create the form.', 'forms-for-html-page-publisher' ) );
+			return new WP_Error( 'ffhpp_wpforms', __( 'WPForms could not create the form.', 'forms-for-html-page-publisher' ) );
 		}
 
 		$data   = $forms->get( $form_id, array( 'content_only' => true ) );
@@ -305,7 +307,7 @@ class HTMLPP_Forms_Adapter_WPForms extends HTMLPP_Forms_Adapter {
 		}
 
 		if ( $field['rows'] ) {
-			$out['htmlpp_rows'] = $field['rows']; // Applied in textarea_rows().
+			$out['ffhpp_rows'] = $field['rows']; // Applied in textarea_rows().
 		}
 
 		if ( 'phone' === $type ) {

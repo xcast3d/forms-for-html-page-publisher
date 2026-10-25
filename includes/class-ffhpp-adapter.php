@@ -2,7 +2,7 @@
 /**
  * Base class for form plugin adapters.
  *
- * @package HTMLPP_Forms
+ * @package FFHPP
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -12,9 +12,9 @@ defined( 'ABSPATH' ) || exit;
  *
  * An adapter renders its forms into published pages, processes submissions
  * posted to a page, and creates forms from fields detected in raw HTML.
- * Register extra adapters with the `htmlpp_forms_adapters` filter.
+ * Register extra adapters with the `ffhpp_adapters` filter.
  */
-abstract class HTMLPP_Forms_Adapter {
+abstract class FFHPP_Adapter {
 
 	/**
 	 * Placeholder key, e.g. "gravity" in <!-- form:gravity:12 -->.
@@ -58,7 +58,7 @@ abstract class HTMLPP_Forms_Adapter {
 	/**
 	 * Create a form from detected fields.
 	 *
-	 * @param array  $form  Parsed form (see HTMLPP_Forms_Parser::find_forms()).
+	 * @param array  $form  Parsed form (see FFHPP_Parser::find_forms()).
 	 * @param string $title Form title.
 	 * @return int|WP_Error New form ID.
 	 */

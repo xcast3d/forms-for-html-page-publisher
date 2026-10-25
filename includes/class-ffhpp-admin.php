@@ -2,7 +2,7 @@
 /**
  * "HTML Pages → Detect Forms" screen.
  *
- * @package HTMLPP_Forms
+ * @package FFHPP
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -10,17 +10,17 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Lists pages that contain HTML forms and converts them on request.
  */
-class HTMLPP_Forms_Admin {
+class FFHPP_Admin {
 
 	/**
 	 * Submenu slug.
 	 */
-	const PAGE_SLUG = 'htmlpp-detect-forms';
+	const PAGE_SLUG = 'ffhpp-detect-forms';
 
 	/**
 	 * admin-post.php action.
 	 */
-	const ACTION = 'htmlpp_forms_convert';
+	const ACTION = 'ffhpp_convert';
 
 	/**
 	 * Field kinds as shown in the preview.
@@ -32,33 +32,36 @@ class HTMLPP_Forms_Admin {
 	/**
 	 * Integration instance.
 	 *
-	 * @var HTMLPP_Forms
+	 * @var FFHPP_Plugin
 	 */
 	private $forms;
 
 	/**
 	 * Register hooks.
 	 *
-	 * @param HTMLPP_Forms $forms Integration instance.
+	 * @param FFHPP_Plugin $forms Integration instance.
 	 */
-	public function __construct( HTMLPP_Forms $forms ) {
+	public function __construct( FFHPP_Plugin $forms ) {
 		$this->forms = $forms;
 		add_filter( 'htmlpp_page_meta_defaults', array( $this, 'meta_defaults' ) );
 		add_action( 'htmlpp_page_created', array( $this, 'flag_page' ), 10, 2 );
 		add_action( 'htmlpp_page_updated', array( $this, 'flag_page' ), 10, 2 );
+		foreach ( array( 'htmlpp_page_meta_updated', 'htmlpp_page_deleted', 'htmlpp_page_renamed', 'htmlpp_page_copied', 'htmlpp_page_duplicated' ) as $hook ) {
+			add_action( $hook, array( 'FFHPP_Converter', 'forget_flagged_count' ) );
+		}
 		add_action( 'admin_menu', array( $this, 'add_menu' ), 20 );
 		add_action( 'admin_post_' . self::ACTION, array( $this, 'handle_convert' ) );
 		add_action( 'admin_notices', array( $this, 'upload_notice' ) );
 	}
 
 	/**
-	 * Persist the per-page form count through HTMLPP_Meta.
+	 * Register the per-page form count as an HTML Page Publisher page field.
 	 *
 	 * @param array $defaults Page record defaults.
 	 * @return array
 	 */
 	public function meta_defaults( $defaults ) {
-		$defaults[ HTMLPP_Forms_Converter::META_KEY ] = 0;
+		$defaults[ FFHPP_Converter::META_KEY ] = 0;
 		return $defaults;
 	}
 
@@ -69,13 +72,13 @@ class HTMLPP_Forms_Admin {
 	 * @param string $html Page HTML.
 	 */
 	public function flag_page( $slug, $html ) {
-		HTMLPP_Forms_Converter::flag( $slug, $html );
+		FFHPP_Converter::flag( $slug, $html );
 	}
 
 	/**
 	 * Form plugins the current user may convert to.
 	 *
-	 * @return HTMLPP_Forms_Adapter[]
+	 * @return FFHPP_Adapter[]
 	 */
 	private function targets() {
 		if ( ! HTMLPP_Plugin::can_write_markup() ) {
@@ -83,7 +86,7 @@ class HTMLPP_Forms_Admin {
 		}
 		return array_filter(
 			$this->forms->available_adapters(),
-			static function ( HTMLPP_Forms_Adapter $adapter ) {
+			static function ( FFHPP_Adapter $adapter ) {
 				return $adapter->can_create();
 			}
 		);
@@ -93,7 +96,7 @@ class HTMLPP_Forms_Admin {
 	 * Add the submenu under HTML Pages, with a count bubble.
 	 */
 	public function add_menu() {
-		$count = HTMLPP_Forms_Converter::flagged_count();
+		$count = FFHPP_Converter::flagged_count();
 		$label = __( 'Detect Forms', 'forms-for-html-page-publisher' );
 		if ( $count ) {
 			$label .= sprintf( ' <span class="awaiting-mod">%d</span>', $count );
@@ -117,7 +120,7 @@ class HTMLPP_Forms_Admin {
 		if ( ! $screen || false === strpos( $screen->id, HTMLPP_Admin::PAGE_SLUG ) || ! current_user_can( HTMLPP_Plugin::capability() ) ) {
 			return;
 		}
-		$count = HTMLPP_Forms_Converter::flagged_count();
+		$count = FFHPP_Converter::flagged_count();
 		if ( ! $count ) {
 			return;
 		}
@@ -160,7 +163,7 @@ class HTMLPP_Forms_Admin {
 
 		$index  = isset( $_POST['form_index'] ) ? absint( $_POST['form_index'] ) : 0;
 		$hash   = isset( $_POST['form_hash'] ) ? sanitize_key( wp_unslash( $_POST['form_hash'] ) ) : '';
-		$result = HTMLPP_Forms_Converter::convert( $adapter, $slug, $index, $hash );
+		$result = FFHPP_Converter::convert( $adapter, $slug, $index, $hash );
 
 		$notice = is_wp_error( $result )
 			? array( 'error' => $result->get_error_message() )
@@ -170,7 +173,7 @@ class HTMLPP_Forms_Admin {
 				'title'   => $result['title'],
 				'slug'    => $slug,
 			);
-		set_transient( 'htmlpp_forms_notice_' . get_current_user_id(), $notice, MINUTE_IN_SECONDS );
+		set_transient( 'ffhpp_notice_' . get_current_user_id(), $notice, MINUTE_IN_SECONDS );
 
 		wp_safe_redirect( self::url() );
 		exit;
@@ -180,15 +183,16 @@ class HTMLPP_Forms_Admin {
 	 * Render the screen.
 	 */
 	public function render() {
-		$pages   = HTMLPP_Plugin::get_instance()->pages;
+		$pages   = htmlpp()->pages;
 		$results = array();
 		foreach ( $pages->list_pages() as $page ) {
-			$html = HTMLPP_Storage::read_page( $page['slug'] );
-			if ( ! is_string( $html ) ) {
+			$full = $pages->get( $page['slug'], true );
+			if ( is_wp_error( $full ) ) {
 				continue;
 			}
-			HTMLPP_Forms_Converter::flag( $page['slug'], $html ); // Catches pages uploaded before activation.
-			$forms = HTMLPP_Forms_Parser::find_forms( $html );
+			$html = $full['html'];
+			FFHPP_Converter::flag( $page['slug'], $html ); // Catches pages uploaded before activation.
+			$forms = FFHPP_Parser::find_forms( $html );
 			if ( $forms ) {
 				$results[] = array(
 					'page'  => $page,
@@ -198,7 +202,7 @@ class HTMLPP_Forms_Admin {
 		}
 		$targets = $this->targets();
 		?>
-		<div class="wrap htmlpp-forms">
+		<div class="wrap ffhpp-wrap">
 			<h1><?php esc_html_e( 'Detect Forms', 'forms-for-html-page-publisher' ); ?></h1>
 			<p><?php esc_html_e( 'Pages below contain HTML forms that do not submit anywhere in WordPress. Converting creates a form with the detected fields in the form plugin you choose and replaces that form in the page with a placeholder. The previous version is kept in the page’s history.', 'forms-for-html-page-publisher' ); ?></p>
 			<?php $this->render_notice(); ?>
@@ -213,28 +217,28 @@ class HTMLPP_Forms_Admin {
 			<?php endforeach; ?>
 		</div>
 		<style>
-			.htmlpp-forms .htmlpp-forms-page { background: #fff; border: 1px solid #c3c4c7; border-radius: 4px; padding: 0 16px 16px; margin: 16px 0; max-width: 1100px; }
-			.htmlpp-forms .htmlpp-forms-page h2 { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline; }
-			.htmlpp-forms .htmlpp-forms-page h2 small { font-weight: 400; font-size: 13px; }
-			.htmlpp-forms .htmlpp-forms-form { border-top: 1px solid #f0f0f1; padding-top: 12px; margin-top: 12px; }
-			.htmlpp-forms .htmlpp-forms-form h3 { margin: 0 0 6px; font-size: 14px; }
-			.htmlpp-forms .htmlpp-forms-meta { color: #50575e; margin: 0 0 10px; }
-			.htmlpp-forms table.widefat { margin-bottom: 12px; }
-			.htmlpp-forms .htmlpp-forms-choices { color: #50575e; }
-			.htmlpp-forms .htmlpp-forms-external { color: #996800; }
-			.htmlpp-forms .htmlpp-forms-notes { margin: 0 0 12px; padding: 8px 12px; background: #f6f7f7; border-left: 4px solid #72aee6; }
-			.htmlpp-forms .htmlpp-forms-notes[hidden] { display: none; }
-			.htmlpp-forms .htmlpp-forms-notes p { margin: 4px 0; }
-			.htmlpp-forms .htmlpp-forms-convert { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-			@media (max-width: 782px) { .htmlpp-forms table.widefat td:nth-child(4), .htmlpp-forms table.widefat th:nth-child(4) { display: none; } }
+			.ffhpp-wrap .ffhpp-page { background: #fff; border: 1px solid #c3c4c7; border-radius: 4px; padding: 0 16px 16px; margin: 16px 0; max-width: 1100px; }
+			.ffhpp-wrap .ffhpp-page h2 { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline; }
+			.ffhpp-wrap .ffhpp-page h2 small { font-weight: 400; font-size: 13px; }
+			.ffhpp-wrap .ffhpp-form { border-top: 1px solid #f0f0f1; padding-top: 12px; margin-top: 12px; }
+			.ffhpp-wrap .ffhpp-form h3 { margin: 0 0 6px; font-size: 14px; }
+			.ffhpp-wrap .ffhpp-meta { color: #50575e; margin: 0 0 10px; }
+			.ffhpp-wrap table.widefat { margin-bottom: 12px; }
+			.ffhpp-wrap .ffhpp-choices { color: #50575e; }
+			.ffhpp-wrap .ffhpp-external { color: #996800; }
+			.ffhpp-wrap .ffhpp-notes { margin: 0 0 12px; padding: 8px 12px; background: #f6f7f7; border-left: 4px solid #72aee6; }
+			.ffhpp-wrap .ffhpp-notes[hidden] { display: none; }
+			.ffhpp-wrap .ffhpp-notes p { margin: 4px 0; }
+			.ffhpp-wrap .ffhpp-convert { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+			@media (max-width: 782px) { .ffhpp-wrap table.widefat td:nth-child(4), .ffhpp-wrap table.widefat th:nth-child(4) { display: none; } }
 		</style>
 		<script>
 			document.addEventListener( 'change', function ( event ) {
-				if ( ! event.target.matches( '.htmlpp-forms-target' ) ) {
+				if ( ! event.target.matches( '.ffhpp-target' ) ) {
 					return;
 				}
-				var form = event.target.closest( '.htmlpp-forms-form' );
-				form.querySelectorAll( '.htmlpp-forms-notes' ).forEach( function ( notes ) {
+				var form = event.target.closest( '.ffhpp-form' );
+				form.querySelectorAll( '.ffhpp-notes' ).forEach( function ( notes ) {
 					notes.hidden = notes.dataset.target !== event.target.value;
 				} );
 			} );
@@ -246,7 +250,7 @@ class HTMLPP_Forms_Admin {
 	 * Result notice from the last conversion.
 	 */
 	private function render_notice() {
-		$key    = 'htmlpp_forms_notice_' . get_current_user_id();
+		$key    = 'ffhpp_notice_' . get_current_user_id();
 		$notice = get_transient( $key );
 		if ( ! $notice ) {
 			return;
@@ -258,7 +262,8 @@ class HTMLPP_Forms_Admin {
 			return;
 		}
 		$adapter = $this->forms->adapter( $notice['adapter'] );
-		if ( ! $adapter ) {
+		$page    = htmlpp()->pages->get( $notice['slug'] );
+		if ( ! $adapter || is_wp_error( $page ) ) {
 			return;
 		}
 		printf(
@@ -275,9 +280,9 @@ class HTMLPP_Forms_Admin {
 			),
 			esc_url( $adapter->edit_url( $notice['form_id'] ) ),
 			esc_html__( 'Edit form', 'forms-for-html-page-publisher' ),
-			esc_url( HTMLPP_Storage::public_page_url( $notice['slug'] ) ),
+			esc_url( $page['url'] ),
 			esc_html__( 'View page', 'forms-for-html-page-publisher' ),
-			esc_url( HTMLPP_Admin::edit_url( $notice['slug'] ) ),
+			esc_url( $page['edit_url'] ),
 			esc_html__( 'Undo from page history', 'forms-for-html-page-publisher' )
 		);
 	}
@@ -285,13 +290,13 @@ class HTMLPP_Forms_Admin {
 	/**
 	 * One page and its forms.
 	 *
-	 * @param array                  $page    Page description.
-	 * @param array[]                $forms   Parsed forms.
-	 * @param HTMLPP_Forms_Adapter[] $targets Plugins the user may convert to.
+	 * @param array           $page    Page description.
+	 * @param array[]         $forms   Parsed forms.
+	 * @param FFHPP_Adapter[] $targets Plugins the user may convert to.
 	 */
 	private function render_page( array $page, array $forms, array $targets ) {
 		?>
-		<div class="htmlpp-forms-page">
+		<div class="ffhpp-page">
 			<h2>
 				<?php echo esc_html( '' !== $page['title'] ? $page['title'] : $page['slug'] ); ?>
 				<small>
@@ -313,10 +318,10 @@ class HTMLPP_Forms_Admin {
 	/**
 	 * One detected form: summary, field preview, convert controls.
 	 *
-	 * @param array                  $page    Page description.
-	 * @param array                  $form    Parsed form.
-	 * @param int                    $total   Forms on the page.
-	 * @param HTMLPP_Forms_Adapter[] $targets Plugins the user may convert to.
+	 * @param array           $page    Page description.
+	 * @param array           $form    Parsed form.
+	 * @param int             $total   Forms on the page.
+	 * @param FFHPP_Adapter[] $targets Plugins the user may convert to.
 	 */
 	private function render_form( array $page, array $form, $total, array $targets ) {
 		$confirm = $form['external']
@@ -328,14 +333,14 @@ class HTMLPP_Forms_Admin {
 			: '';
 		$first   = $targets ? reset( $targets )->id() : '';
 		?>
-		<div class="htmlpp-forms-form">
+		<div class="ffhpp-form">
 			<h3>
 				<?php
 				/* translators: 1: form number, 2: total forms on the page. */
 				echo esc_html( sprintf( __( 'Form %1$d of %2$d', 'forms-for-html-page-publisher' ), $form['index'] + 1, $total ) );
 				?>
 			</h3>
-			<p class="htmlpp-forms-meta">
+			<p class="ffhpp-meta">
 				<?php
 				echo esc_html(
 					sprintf(
@@ -348,7 +353,7 @@ class HTMLPP_Forms_Admin {
 				?>
 				·
 				<?php if ( $form['external'] ) : ?>
-					<span class="htmlpp-forms-external dashicons-before dashicons-warning">
+					<span class="ffhpp-external dashicons-before dashicons-warning">
 						<?php
 						/* translators: %s: external host name. */
 						echo esc_html( sprintf( __( 'Posts to external service: %s', 'forms-for-html-page-publisher' ), $form['external'] ) );
@@ -380,9 +385,9 @@ class HTMLPP_Forms_Admin {
 								<td>
 									<?php echo esc_html( $field['label'] ); ?>
 									<?php if ( $field['choices'] ) : ?>
-										<br><small class="htmlpp-forms-choices"><?php echo esc_html( implode( ', ', wp_list_pluck( $field['choices'], 'text' ) ) ); ?></small>
+										<br><small class="ffhpp-choices"><?php echo esc_html( implode( ', ', wp_list_pluck( $field['choices'], 'text' ) ) ); ?></small>
 									<?php elseif ( 'consent' === $field['type'] ) : ?>
-										<br><small class="htmlpp-forms-choices">☐ <?php echo esc_html( $field['checkbox_label'] ); ?></small>
+										<br><small class="ffhpp-choices">☐ <?php echo esc_html( $field['checkbox_label'] ); ?></small>
 									<?php endif; ?>
 								</td>
 								<td><?php echo esc_html( self::kind_label( $field['type'] ) ); ?> <small>(<?php echo esc_html( $field['html_type'] ); ?>)</small></td>
@@ -396,7 +401,7 @@ class HTMLPP_Forms_Admin {
 				<?php foreach ( $targets as $adapter ) : ?>
 					<?php $notes = $adapter->conversion_notes( $form ); ?>
 					<?php if ( $notes ) : ?>
-						<div class="htmlpp-forms-notes" data-target="<?php echo esc_attr( $adapter->id() ); ?>"<?php echo $adapter->id() !== $first ? ' hidden' : ''; ?>>
+						<div class="ffhpp-notes" data-target="<?php echo esc_attr( $adapter->id() ); ?>"<?php echo $adapter->id() !== $first ? ' hidden' : ''; ?>>
 							<?php foreach ( $notes as $note ) : ?>
 								<p><?php echo esc_html( $note ); ?></p>
 							<?php endforeach; ?>
@@ -408,16 +413,16 @@ class HTMLPP_Forms_Admin {
 			<?php endif; ?>
 
 			<?php if ( $targets && $form['fields'] ) : ?>
-				<form class="htmlpp-forms-convert" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"<?php echo $confirm ? ' onsubmit="return confirm(' . esc_attr( wp_json_encode( $confirm ) ) . ');"' : ''; ?>>
+				<form class="ffhpp-convert" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"<?php echo $confirm ? ' onsubmit="return confirm(' . esc_attr( wp_json_encode( $confirm ) ) . ');"' : ''; ?>>
 					<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION ); ?>">
 					<input type="hidden" name="slug" value="<?php echo esc_attr( $page['slug'] ); ?>">
 					<input type="hidden" name="form_index" value="<?php echo esc_attr( $form['index'] ); ?>">
 					<input type="hidden" name="form_hash" value="<?php echo esc_attr( $form['hash'] ); ?>">
 					<?php wp_nonce_field( self::ACTION . '_' . $page['slug'] ); ?>
 					<?php if ( count( $targets ) > 1 ) : ?>
-						<?php $select_id = 'htmlpp-forms-target-' . $page['slug'] . '-' . $form['index']; ?>
+						<?php $select_id = 'ffhpp-target-' . $page['slug'] . '-' . $form['index']; ?>
 						<label for="<?php echo esc_attr( $select_id ); ?>"><?php esc_html_e( 'Convert to', 'forms-for-html-page-publisher' ); ?></label>
-						<select class="htmlpp-forms-target" id="<?php echo esc_attr( $select_id ); ?>" name="target">
+						<select class="ffhpp-target" id="<?php echo esc_attr( $select_id ); ?>" name="target">
 							<?php foreach ( $targets as $adapter ) : ?>
 								<option value="<?php echo esc_attr( $adapter->id() ); ?>"><?php echo esc_html( $adapter->label() ); ?></option>
 							<?php endforeach; ?>

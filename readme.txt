@@ -2,9 +2,9 @@
 Contributors: xcastaneda
 Tags: gravity forms, contact form 7, wpforms, landing page, static html
 Requires at least: 5.9
-Tested up to: 6.8
+Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.6.0
+Stable tag: 0.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -40,7 +40,7 @@ With `styles=page`, the form plugin's visual theme is turned off and the landing
 
 Without `styles=page`, forms use the form plugin's own theme.
 
-Converted forms use `styles=page` by default (filter `htmlpp_forms_default_styles`). The original `<form>` becomes a `<div>` with the same class, id and other presentational attributes, and anything inside the form before the first field (a heading, intro text) or after the button stays in place around the placeholder:
+Converted forms use `styles=page` by default (filter `ffhpp_default_styles`). The original `<form>` becomes a `<div>` with the same class, id and other presentational attributes, and anything inside the form before the first field (a heading, intro text) or after the button stays in place around the placeholder:
 
 `<div id="signup" class="signup-form"><h2>Tell us about your project</h2><!-- form:cf7:34 styles=page button-class="btn btn-primary" --></div>`
 
@@ -54,7 +54,7 @@ What it does:
 * The form plugin's own validation, anti-spam, notifications, confirmations and entry storage apply.
 * Missing, inactive or trashed forms, or an inactive form plugin: a visible warning in draft previews; an HTML comment (nothing visible) on published pages.
 
-Requires HTML Page Publisher and at least one of: Gravity Forms (2.9+; tested with 3.2.0), Contact Form 7 (tested with 6.2.3), WPForms Lite/Pro (tested with Lite 2.0.3).
+Requires HTML Page Publisher 1.5.2 or later and at least one of: Gravity Forms (2.9+; tested with 3.2.0), Contact Form 7 (tested with 6.2.3), WPForms Lite/Pro (tested with Lite 2.0.3).
 
 = Detect Forms: convert raw HTML forms =
 
@@ -114,36 +114,37 @@ Open an issue at https://github.com/xcast3d/forms-for-html-page-publisher/issues
 
 == How it integrates with HTML Page Publisher ==
 
-Uses only public hooks:
+Uses only HTML Page Publisher's public hooks and page service (version 1.5.2 or later):
 
 * `htmlpp_page_html` – replace placeholders and inject assets.
 * `htmlpp_before_serve` – route a form submission before the page is served.
 * `htmlpp_page_created` / `htmlpp_page_updated` – flag pages that contain HTML forms.
-* `htmlpp_page_meta_defaults` – store the per-page form count (`html_forms`).
-* `HTMLPP_Plugin::get_instance()->pages->update_html()` – save a converted page with a version backup.
+* `htmlpp_page_meta_defaults` – register the per-page form count (`html_forms`), read and written through `htmlpp()->pages`.
+* `htmlpp_serve_priority` – serve pages after form plugins have initialised (see below).
+* `htmlpp()->pages` – read pages and their HTML, and save a converted page with a version backup (`update_html()`).
 
 Two adjustments, both needed because pages are served during `init`:
 
-1. HTML Page Publisher serves pages at `init` priority 0, before form plugins initialise (`init`, 10). This add-on re-hooks `HTMLPP_Renderer::maybe_serve` to `init` priority 20 (filterable with `htmlpp_forms_serve_priority`). Pages are still served before WordPress's main query runs.
+1. HTML Page Publisher serves pages at `init` priority 0 by default, before form plugins initialise (`init`, 10). This add-on raises that to priority 20 through `htmlpp_serve_priority` (filterable with `ffhpp_serve_priority`). Pages are still served before WordPress's main query runs.
 2. Contact Form 7 and WPForms register their scripts on `wp_enqueue_scripts`, which never fires on these pages. When one of their forms is on a page, the add-on runs that action once, keeps the registrations, and discards whatever the theme or other plugins enqueued.
-
-**Suggestion for HTML Page Publisher:** a filter for the serve priority (or serving on a later `init` priority by default) would let add-ons like this one avoid re-hooking the renderer.
 
 == Adding another form plugin ==
 
-Extend `HTMLPP_Forms_Adapter` (form_exists, render, create_form, delete_form, edit_url, can_create, and optionally submission routing and conversion notes) and add an instance with the `htmlpp_forms_adapters` filter. Its `id()` becomes the placeholder key: `<!-- form:{id}:{form ID} -->`.
+Extend `FFHPP_Adapter` (form_exists, render, create_form, delete_form, edit_url, can_create, and optionally submission routing and conversion notes) and add an instance with the `ffhpp_adapters` filter. Its `id()` becomes the placeholder key: `<!-- form:{id}:{form ID} -->`.
 
 == Filters ==
 
-* `htmlpp_forms_adapters` (HTMLPP_Forms_Adapter[]) – form plugin adapters, in order of preference.
-* `htmlpp_forms_serve_priority` (int, default 20) – init priority pages are served at.
-* `htmlpp_forms_form_markup` (string $markup, string $adapter, int $form_id, bool $preview) – rendered form HTML before it replaces the placeholder.
-* `htmlpp_forms_consent_pattern` (string $pattern) – regex that marks a lone checkbox as a consent field.
-* `htmlpp_forms_default_styles` (string 'page'|'plugin', HTMLPP_Forms_Adapter $adapter, array $form) – styling mode written into converted placeholders.
+* `ffhpp_adapters` (FFHPP_Adapter[]) – form plugin adapters, in order of preference.
+* `ffhpp_serve_priority` (int, default 20) – init priority pages are served at.
+* `ffhpp_form_markup` (string $markup, string $adapter, int $form_id, bool $preview) – rendered form HTML before it replaces the placeholder.
+* `ffhpp_consent_pattern` (string $pattern) – regex that marks a lone checkbox as a consent field.
+* `ffhpp_default_styles` (string 'page'|'plugin', FFHPP_Adapter $adapter, array $form) – styling mode written into converted placeholders.
+
+Filters and actions used the `htmlpp_forms_` prefix before 0.7.0 (for example `htmlpp_forms_adapters`). The old names still work in 0.7.0 with a deprecation notice when `WP_DEBUG` is on, and will be removed in the next release.
 
 == Actions ==
 
-* `htmlpp_forms_form_converted` (string $adapter, int $form_id, string $slug, array $form) – after an HTML form was converted.
+* `ffhpp_form_converted` (string $adapter, int $form_id, string $slug, array $form) – after an HTML form was converted.
 
 == Known limitations ==
 
@@ -157,6 +158,14 @@ Extend `HTMLPP_Forms_Adapter` (form_exists, render, create_form, delete_form, ed
 * File inputs, color pickers and custom widgets are not converted; forms are detected in the raw source, so a `<form>` inside a `<script>` string or HTML comment would also be listed.
 
 == Changelog ==
+
+= 0.7.0 =
+* Requires HTML Page Publisher 1.5.2 or later. The add-on now uses only its public hooks and page service.
+* Pages are served after form plugins load through HTML Page Publisher's new `htmlpp_serve_priority` filter, instead of re-hooking its renderer.
+* The Detect Forms count badge is cached instead of re-reading every page on each admin screen.
+* New prefix `ffhpp` for the add-on's own code: classes (`FFHPP_Adapter`…), filters and actions (`ffhpp_adapters`, `ffhpp_serve_priority`, `ffhpp_form_markup`, `ffhpp_consent_pattern`, `ffhpp_default_styles`, `ffhpp_form_converted`) and CSS classes (`ffhpp-embed`, `ffhpp-page-styles`). The `htmlpp_forms_*` hooks still work for this release, with a deprecation notice. Placeholders, WP-CLI commands (`wp htmlpp forms`) and converted forms are unchanged.
+* Detect Forms moved to `admin.php?page=ffhpp-detect-forms` (same menu location).
+* Converting: text taken from the page (labels, choices, placeholders, button text) has any HTML tags removed, and square brackets in Contact Form 7 labels become parentheses so they can't be read as form-tags.
 
 = 0.6.0 =
 * Renamed to Forms for HTML Page Publisher (slug, folder and text domain `forms-for-html-page-publisher`). Placeholders, hooks and WP-CLI commands are unchanged. Reactivate the plugin after updating, since its folder name changed.

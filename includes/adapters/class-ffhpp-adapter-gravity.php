@@ -2,7 +2,7 @@
 /**
  * Gravity Forms adapter.
  *
- * @package HTMLPP_Forms
+ * @package FFHPP
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Gravity Forms: <!-- form:gravity:ID --> (or legacy <!-- gravity-form:ID -->).
  */
-class HTMLPP_Forms_Adapter_Gravity extends HTMLPP_Forms_Adapter {
+class FFHPP_Adapter_Gravity extends FFHPP_Adapter {
 
 	/**
 	 * Field kinds mapped to Gravity Forms field types.
@@ -69,7 +69,7 @@ class HTMLPP_Forms_Adapter_Gravity extends HTMLPP_Forms_Adapter {
 			return null;
 		}
 		if ( ! wp_script_is( 'gform_gravityforms', 'registered' ) ) {
-			return null; // Gravity Forms has not initialised; see HTMLPP_Forms::defer_renderer().
+			return null; // Gravity Forms has not initialised; see FFHPP_Plugin::serve_priority().
 		}
 
 		// Init scripts default to wp_footer, which never fires on these pages.

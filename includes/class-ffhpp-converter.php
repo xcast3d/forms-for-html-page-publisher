@@ -2,7 +2,7 @@
 /**
  * Converts a page's HTML form into a form plugin's form.
  *
- * @package HTMLPP_Forms
+ * @package FFHPP
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -10,12 +10,17 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Creates the form and swaps the <form> for a placeholder.
  */
-class HTMLPP_Forms_Converter {
+class FFHPP_Converter {
 
 	/**
 	 * Page meta key holding the number of unconverted <form> elements.
 	 */
 	const META_KEY = 'html_forms';
+
+	/**
+	 * Transient caching the number of flagged pages.
+	 */
+	const COUNT_CACHE = 'ffhpp_flagged_count';
 
 	/**
 	 * Convert one form on a page.
@@ -24,33 +29,33 @@ class HTMLPP_Forms_Converter {
 	 * snapshots the previous version first, so a conversion can be rolled
 	 * back from the page's version history.
 	 *
-	 * @param HTMLPP_Forms_Adapter $adapter Target form plugin.
-	 * @param string               $slug    Page slug.
-	 * @param int                  $index   Zero-based form index in the page.
-	 * @param string               $hash    md5 of the form's raw HTML when it was reviewed.
+	 * @param FFHPP_Adapter $adapter Target form plugin.
+	 * @param string        $slug    Page slug.
+	 * @param int           $index   Zero-based form index in the page.
+	 * @param string        $hash    md5 of the form's raw HTML when it was reviewed.
 	 * @return array|WP_Error { form_id, title } on success.
 	 */
-	public static function convert( HTMLPP_Forms_Adapter $adapter, $slug, $index, $hash ) {
-		$pages = HTMLPP_Plugin::get_instance()->pages;
+	public static function convert( FFHPP_Adapter $adapter, $slug, $index, $hash ) {
+		$pages = htmlpp()->pages;
 		$page  = $pages->get( $slug, true );
 		if ( is_wp_error( $page ) ) {
 			return $page;
 		}
 		$html = isset( $page['html'] ) ? (string) $page['html'] : '';
 
-		$forms = HTMLPP_Forms_Parser::find_forms( $html );
+		$forms = FFHPP_Parser::find_forms( $html );
 		if ( ! isset( $forms[ $index ] ) || ! hash_equals( $forms[ $index ]['hash'], (string) $hash ) ) {
-			return new WP_Error( 'htmlpp_forms_changed', __( 'The page changed since it was scanned. Review the form again before converting.', 'forms-for-html-page-publisher' ) );
+			return new WP_Error( 'ffhpp_changed', __( 'The page changed since it was scanned. Review the form again before converting.', 'forms-for-html-page-publisher' ) );
 		}
 		$form = $forms[ $index ];
 		if ( ! $form['fields'] ) {
-			return new WP_Error( 'htmlpp_forms_empty', __( 'No supported fields were found in this form.', 'forms-for-html-page-publisher' ) );
+			return new WP_Error( 'ffhpp_empty', __( 'No supported fields were found in this form.', 'forms-for-html-page-publisher' ) );
 		}
 
 		// Number forms by position in the page, counting forms already
 		// converted to placeholders, so titles stay "form 1", "form 2"… however
 		// many conversions it takes.
-		preg_match_all( HTMLPP_Forms::PLACEHOLDER, $html, $converted, PREG_OFFSET_CAPTURE );
+		preg_match_all( FFHPP_Plugin::PLACEHOLDER, $html, $converted, PREG_OFFSET_CAPTURE );
 		$total  = count( $forms ) + count( $converted[0] );
 		$number = $index + 1;
 		foreach ( $converted[0] as $match ) {
@@ -76,11 +81,12 @@ class HTMLPP_Forms_Converter {
 		 * original form/button classes are carried over); 'plugin' uses the
 		 * form plugin's own theme.
 		 *
-		 * @param string               $styles  'page' or 'plugin'.
-		 * @param HTMLPP_Forms_Adapter $adapter Target form plugin.
-		 * @param array                $form    Parsed form.
+		 * @param string        $styles  'page' or 'plugin'.
+		 * @param FFHPP_Adapter $adapter Target form plugin.
+		 * @param array         $form    Parsed form.
 		 */
-		$styles = 'plugin' === apply_filters( 'htmlpp_forms_default_styles', 'page', $adapter, $form ) ? 'plugin' : 'page';
+		$styles = apply_filters_deprecated( 'htmlpp_forms_default_styles', array( 'page', $adapter, $form ), '0.7.0', 'ffhpp_default_styles' );
+		$styles = 'plugin' === apply_filters( 'ffhpp_default_styles', $styles, $adapter, $form ) ? 'plugin' : 'page';
 
 		$placeholder = $adapter->placeholder(
 			$form_id,
@@ -103,9 +109,10 @@ class HTMLPP_Forms_Converter {
 		 * @param string $adapter Adapter ID (gravity, cf7, wpforms…).
 		 * @param int    $form_id New form ID.
 		 * @param string $slug    Page slug.
-		 * @param array  $form    Parsed form (see HTMLPP_Forms_Parser::find_forms()).
+		 * @param array  $form    Parsed form (see FFHPP_Parser::find_forms()).
 		 */
-		do_action( 'htmlpp_forms_form_converted', $adapter->id(), (int) $form_id, $page['slug'], $form );
+		do_action( 'ffhpp_form_converted', $adapter->id(), (int) $form_id, $page['slug'], $form );
+		do_action_deprecated( 'htmlpp_forms_form_converted', array( $adapter->id(), (int) $form_id, $page['slug'], $form ), '0.7.0', 'ffhpp_form_converted' );
 
 		return array(
 			'form_id' => (int) $form_id,
@@ -140,25 +147,46 @@ class HTMLPP_Forms_Converter {
 	 * @param string $html Page HTML.
 	 */
 	public static function flag( $slug, $html ) {
-		$count = HTMLPP_Forms_Parser::count_forms( $html );
-		$meta  = HTMLPP_Meta::get( $slug );
-		if ( (int) ( isset( $meta[ self::META_KEY ] ) ? $meta[ self::META_KEY ] : 0 ) !== $count ) {
-			HTMLPP_Meta::update( $slug, array( self::META_KEY => $count ) );
+		$pages = htmlpp()->pages;
+		$page  = $pages->get( $slug );
+		if ( is_wp_error( $page ) ) {
+			return;
+		}
+		$count = FFHPP_Parser::count_forms( $html );
+		if ( (int) ( isset( $page[ self::META_KEY ] ) ? $page[ self::META_KEY ] : 0 ) !== $count ) {
+			$pages->set_meta( $slug, array( self::META_KEY => $count ) );
 		}
 	}
 
 	/**
 	 * Number of pages flagged as containing HTML forms.
 	 *
+	 * Cached, since listing pages reads every page from disk and the count is
+	 * shown on every admin screen (menu badge). See forget_flagged_count().
+	 *
 	 * @return int
 	 */
 	public static function flagged_count() {
+		$count = get_transient( self::COUNT_CACHE );
+		if ( false !== $count ) {
+			return (int) $count;
+		}
+
 		$count = 0;
-		foreach ( HTMLPP_Meta::all() as $record ) {
-			if ( ! empty( $record[ self::META_KEY ] ) ) {
+		foreach ( htmlpp()->pages->list_pages() as $page ) {
+			if ( ! empty( $page[ self::META_KEY ] ) ) {
 				++$count;
 			}
 		}
+		set_transient( self::COUNT_CACHE, $count, DAY_IN_SECONDS );
 		return $count;
+	}
+
+	/**
+	 * Drop the cached flagged-page count (page meta changed, or a page was
+	 * deleted, renamed or copied).
+	 */
+	public static function forget_flagged_count() {
+		delete_transient( self::COUNT_CACHE );
 	}
 }

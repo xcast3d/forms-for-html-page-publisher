@@ -2,7 +2,7 @@
 /**
  * Contact Form 7 adapter.
  *
- * @package HTMLPP_Forms
+ * @package FFHPP
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * CF7 submits through its REST API when JavaScript runs, so only the no-JS
  * fallback posts to the page URL.
  */
-class HTMLPP_Forms_Adapter_CF7 extends HTMLPP_Forms_Adapter {
+class FFHPP_Adapter_CF7 extends FFHPP_Adapter {
 
 	/**
 	 * Whether the current render uses styles=page.
@@ -175,7 +175,7 @@ class HTMLPP_Forms_Adapter_CF7 extends HTMLPP_Forms_Adapter {
 	 * {@inheritDoc}
 	 */
 	public function create_form( array $form, $title ) {
-		$names = HTMLPP_Forms_Parser::field_names( $form );
+		$names = FFHPP_Parser::field_names( $form );
 		$lines = array();
 		$body  = array();
 		$email = '';
@@ -184,7 +184,7 @@ class HTMLPP_Forms_Adapter_CF7 extends HTMLPP_Forms_Adapter {
 			$name    = $names[ $i ];
 			$lines[] = $this->form_tag_markup( $field, $name );
 			if ( 'hidden' !== $field['type'] ) {
-				$body[] = $field['label'] . ': [' . $name . ']';
+				$body[] = self::plain( $field['label'] ) . ': [' . $name . ']';
 			}
 			if ( '' === $email && 'email' === $field['type'] ) {
 				$email = $name;
@@ -208,7 +208,7 @@ class HTMLPP_Forms_Adapter_CF7 extends HTMLPP_Forms_Adapter {
 
 		$form_id = (int) $contact_form->save();
 		if ( ! $form_id ) {
-			return new WP_Error( 'htmlpp_forms_cf7', __( 'Contact Form 7 could not save the form.', 'forms-for-html-page-publisher' ) );
+			return new WP_Error( 'ffhpp_cf7', __( 'Contact Form 7 could not save the form.', 'forms-for-html-page-publisher' ) );
 		}
 		return $form_id;
 	}
@@ -221,7 +221,7 @@ class HTMLPP_Forms_Adapter_CF7 extends HTMLPP_Forms_Adapter {
 	 * @return string
 	 */
 	private function form_tag_markup( array $field, $name ) {
-		$label = esc_html( $field['label'] );
+		$label = esc_html( self::plain( $field['label'] ) );
 		$star  = $field['required'] ? '*' : '';
 
 		switch ( $field['type'] ) {
@@ -230,7 +230,7 @@ class HTMLPP_Forms_Adapter_CF7 extends HTMLPP_Forms_Adapter {
 
 			case 'consent':
 				return '[acceptance ' . $name . ( $field['required'] ? '' : ' optional' ) . '] '
-					. esc_html( $field['checkbox_label'] ) . ' [/acceptance]';
+					. esc_html( self::plain( $field['checkbox_label'] ) ) . ' [/acceptance]';
 
 			case 'select':
 				$tag = '[select' . $star . ' ' . $name;
@@ -279,6 +279,17 @@ class HTMLPP_Forms_Adapter_CF7 extends HTMLPP_Forms_Adapter {
 			$out[] = self::quote( $value );
 		}
 		return implode( ' ', $out );
+	}
+
+	/**
+	 * Label text for the form template and mail body. CF7 reads any [...] as a
+	 * form-tag or mail-tag, so "Budget [optional]" becomes "Budget (optional)".
+	 *
+	 * @param string $text Text.
+	 * @return string
+	 */
+	private static function plain( $text ) {
+		return strtr( (string) $text, '[]', '()' );
 	}
 
 	/**

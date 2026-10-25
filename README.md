@@ -52,7 +52,7 @@ wp htmlpp forms placeholders --problems                 # forms that can't be sh
 ## Requirements
 
 - WordPress 5.9+ and PHP 7.4+
-- [HTML Page Publisher](https://wordpress.org/plugins/html-page-publisher/) (required)
+- [HTML Page Publisher](https://wordpress.org/plugins/html-page-publisher/) 1.5.2 or later (required)
 - At least one of: Gravity Forms 2.9+, Contact Form 7, WPForms Lite or Pro
 
 If your site sets `DISALLOW_FILE_EDIT` (a common security setting), HTML Page Publisher turns off page editing, and conversion along with it. See its `htmlpp_editing_disabled` filter.

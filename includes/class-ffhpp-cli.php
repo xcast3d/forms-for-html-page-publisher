@@ -2,7 +2,7 @@
 /**
  * WP-CLI: wp htmlpp forms <command>
  *
- * @package HTMLPP_Forms
+ * @package FFHPP
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -10,15 +10,15 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Detect, convert and audit forms in HTML Page Publisher pages.
  */
-class HTMLPP_Forms_CLI extends WP_CLI_Command {
+class FFHPP_CLI extends WP_CLI_Command {
 
 	/**
 	 * Integration instance.
 	 *
-	 * @return HTMLPP_Forms
+	 * @return FFHPP_Plugin
 	 */
 	private function forms() {
-		return HTMLPP_Forms::instance();
+		return FFHPP_Plugin::instance();
 	}
 
 	/**
@@ -41,16 +41,15 @@ class HTMLPP_Forms_CLI extends WP_CLI_Command {
 	 * @return array[] Page descriptions with 'html'.
 	 */
 	private function pages( $args ) {
-		$service = HTMLPP_Plugin::get_instance()->pages;
+		$service = htmlpp()->pages;
 		if ( ! empty( $args[0] ) ) {
 			return array( $this->check( $service->get( $args[0], true ) ) );
 		}
 		$pages = array();
 		foreach ( $service->list_pages() as $page ) {
-			$html = HTMLPP_Storage::read_page( $page['slug'] );
-			if ( is_string( $html ) ) {
-				$page['html'] = $html;
-				$pages[]      = $page;
+			$page = $service->get( $page['slug'], true );
+			if ( ! is_wp_error( $page ) ) {
+				$pages[] = $page;
 			}
 		}
 		return $pages;
@@ -127,7 +126,7 @@ class HTMLPP_Forms_CLI extends WP_CLI_Command {
 	public function detect( $args, $assoc_args ) {
 		$rows = array();
 		foreach ( $this->pages( $args ) as $page ) {
-			foreach ( HTMLPP_Forms_Parser::find_forms( $page['html'] ) as $form ) {
+			foreach ( FFHPP_Parser::find_forms( $page['html'] ) as $form ) {
 				$rows[] = array(
 					'slug'     => $page['slug'],
 					'form'     => $form['index'] + 1,
@@ -199,8 +198,8 @@ class HTMLPP_Forms_CLI extends WP_CLI_Command {
 		$dry_run = ! empty( $assoc_args['dry-run'] );
 		$styles  = isset( $assoc_args['styles'] ) && 'plugin' === $assoc_args['styles'] ? 'plugin' : 'page';
 
-		$page  = $this->check( HTMLPP_Plugin::get_instance()->pages->get( $slug, true ) );
-		$forms = HTMLPP_Forms_Parser::find_forms( $page['html'] );
+		$page  = $this->check( htmlpp()->pages->get( $slug, true ) );
+		$forms = FFHPP_Parser::find_forms( $page['html'] );
 		if ( ! $forms ) {
 			WP_CLI::error( "No HTML forms found in {$slug}." );
 		}
@@ -233,25 +232,25 @@ class HTMLPP_Forms_CLI extends WP_CLI_Command {
 		$set_styles = static function () use ( $styles ) {
 			return $styles;
 		};
-		add_filter( 'htmlpp_forms_default_styles', $set_styles, 99 );
+		add_filter( 'ffhpp_default_styles', $set_styles, 99 );
 
 		// Each conversion shifts the remaining forms, so convert from the last
 		// to the first and re-read the page every time.
 		$created = array();
 		foreach ( array_reverse( $indexes ) as $i ) {
-			$fresh = HTMLPP_Forms_Parser::find_forms( HTMLPP_Storage::read_page( $page['slug'] ) );
+			$fresh = FFHPP_Parser::find_forms( $this->check( htmlpp()->pages->get( $page['slug'], true ) )['html'] );
 			if ( empty( $fresh[ $i ]['fields'] ) ) {
 				WP_CLI::warning( sprintf( 'Form %d has no supported fields; skipped.', $i + 1 ) );
 				continue;
 			}
-			$result    = $this->check( HTMLPP_Forms_Converter::convert( $adapter, $page['slug'], $i, $fresh[ $i ]['hash'] ) );
+			$result    = $this->check( FFHPP_Converter::convert( $adapter, $page['slug'], $i, $fresh[ $i ]['hash'] ) );
 			$created[] = $result['form_id'];
 			if ( empty( $assoc_args['porcelain'] ) ) {
 				WP_CLI::success( sprintf( 'Form %d → %s form #%d “%s” (%s)', $i + 1, $adapter->label(), $result['form_id'], $result['title'], $adapter->edit_url( $result['form_id'] ) ) );
 			}
 		}
 
-		remove_filter( 'htmlpp_forms_default_styles', $set_styles, 99 );
+		remove_filter( 'ffhpp_default_styles', $set_styles, 99 );
 
 		if ( ! empty( $assoc_args['porcelain'] ) ) {
 			WP_CLI::line( implode( ' ', array_reverse( $created ) ) );
@@ -286,7 +285,7 @@ class HTMLPP_Forms_CLI extends WP_CLI_Command {
 		$rows     = array();
 		$problems = 0;
 		foreach ( $this->pages( $args ) as $page ) {
-			foreach ( HTMLPP_Forms::placeholders( $page['html'] ) as $placeholder ) {
+			foreach ( FFHPP_Plugin::placeholders( $page['html'] ) as $placeholder ) {
 				$adapter = $this->forms()->adapter( $placeholder['adapter'] );
 				if ( ! $adapter ) {
 					$status = 'unknown plugin';
@@ -322,7 +321,7 @@ class HTMLPP_Forms_CLI extends WP_CLI_Command {
 	 * Target adapter from --to, or the only active one.
 	 *
 	 * @param array $assoc_args Flags.
-	 * @return HTMLPP_Forms_Adapter
+	 * @return FFHPP_Adapter
 	 */
 	private function target( $assoc_args ) {
 		$available = $this->forms()->available_adapters();
@@ -346,12 +345,12 @@ class HTMLPP_Forms_CLI extends WP_CLI_Command {
 	/**
 	 * Print what converting a form would create.
 	 *
-	 * @param array                $form    Parsed form.
-	 * @param int                  $total   Forms on the page.
-	 * @param HTMLPP_Forms_Adapter $adapter Target plugin.
-	 * @param string               $styles  page or plugin.
+	 * @param array         $form    Parsed form.
+	 * @param int           $total   Forms on the page.
+	 * @param FFHPP_Adapter $adapter Target plugin.
+	 * @param string        $styles  page or plugin.
 	 */
-	private function preview( array $form, $total, HTMLPP_Forms_Adapter $adapter, $styles ) {
+	private function preview( array $form, $total, FFHPP_Adapter $adapter, $styles ) {
 		WP_CLI::log( sprintf( 'Form %d of %d → %s · button “%s” · posts to: %s', $form['index'] + 1, $total, $adapter->label(), $form['button'], self::posts_to( $form ) ) );
 
 		$rows = array();

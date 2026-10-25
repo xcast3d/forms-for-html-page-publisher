@@ -2,7 +2,7 @@
 /**
  * Replaces form placeholders in published pages.
  *
- * @package HTMLPP_Forms
+ * @package FFHPP
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -25,7 +25,7 @@ defined( 'ABSPATH' ) || exit;
  * Only these explicit placeholders are processed; shortcodes elsewhere in the
  * uploaded document are left untouched.
  */
-class HTMLPP_Forms {
+class FFHPP_Plugin {
 
 	/**
 	 * Matches a placeholder: adapter ID (or legacy "gravity-form"), form ID,
@@ -36,14 +36,14 @@ class HTMLPP_Forms {
 	/**
 	 * Singleton instance.
 	 *
-	 * @var HTMLPP_Forms|null
+	 * @var FFHPP_Plugin|null
 	 */
 	private static $instance = null;
 
 	/**
 	 * Adapters keyed by ID, including unavailable ones.
 	 *
-	 * @var HTMLPP_Forms_Adapter[]
+	 * @var FFHPP_Adapter[]
 	 */
 	private $adapters = array();
 
@@ -61,16 +61,27 @@ class HTMLPP_Forms {
 		if ( null !== self::$instance ) {
 			return;
 		}
-		if ( ! class_exists( 'HTMLPP_Plugin' ) ) {
+		if ( ! function_exists( 'htmlpp' ) || ! defined( 'HTMLPP_VERSION' ) ) {
 			self::dependency_notice( __( 'Forms for HTML Page Publisher needs HTML Page Publisher to be active.', 'forms-for-html-page-publisher' ) );
+			return;
+		}
+		if ( version_compare( HTMLPP_VERSION, FFHPP_MIN_HTMLPP, '<' ) ) {
+			self::dependency_notice(
+				sprintf(
+					/* translators: 1: required version, 2: installed version. */
+					__( 'Forms for HTML Page Publisher needs HTML Page Publisher %1$s or later (installed: %2$s). Update HTML Page Publisher to use it.', 'forms-for-html-page-publisher' ),
+					FFHPP_MIN_HTMLPP,
+					HTMLPP_VERSION
+				)
+			);
 			return;
 		}
 
 		self::$instance = new self();
 
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
-			require_once HTMLPP_FORMS_PLUGIN_DIR . 'includes/class-htmlpp-forms-cli.php';
-			WP_CLI::add_command( 'htmlpp forms', 'HTMLPP_Forms_CLI' );
+			require_once FFHPP_PLUGIN_DIR . 'includes/class-ffhpp-cli.php';
+			WP_CLI::add_command( 'htmlpp forms', 'FFHPP_CLI' );
 		}
 
 		if ( ! self::$instance->available_adapters() ) {
@@ -81,7 +92,7 @@ class HTMLPP_Forms {
 	/**
 	 * The running instance.
 	 *
-	 * @return HTMLPP_Forms|null
+	 * @return FFHPP_Plugin|null
 	 */
 	public static function instance() {
 		return self::$instance;
@@ -110,33 +121,31 @@ class HTMLPP_Forms {
 		/**
 		 * Filter the form plugin adapters.
 		 *
-		 * @param HTMLPP_Forms_Adapter[] $adapters Adapters, in order of preference.
+		 * @param FFHPP_Adapter[] $adapters Adapters, in order of preference.
 		 */
-		$adapters = apply_filters(
-			'htmlpp_forms_adapters',
-			array(
-				new HTMLPP_Forms_Adapter_Gravity(),
-				new HTMLPP_Forms_Adapter_WPForms(),
-				new HTMLPP_Forms_Adapter_CF7(),
-			)
+		$adapters = array(
+			new FFHPP_Adapter_Gravity(),
+			new FFHPP_Adapter_WPForms(),
+			new FFHPP_Adapter_CF7(),
 		);
+		$adapters = apply_filters_deprecated( 'htmlpp_forms_adapters', array( $adapters ), '0.7.0', 'ffhpp_adapters' );
+		$adapters = apply_filters( 'ffhpp_adapters', $adapters );
 		foreach ( $adapters as $adapter ) {
-			if ( $adapter instanceof HTMLPP_Forms_Adapter ) {
+			if ( $adapter instanceof FFHPP_Adapter ) {
 				$this->adapters[ $adapter->id() ] = $adapter;
 			}
 		}
 
-		$this->defer_renderer();
 		add_action( 'htmlpp_before_serve', array( $this, 'maybe_process_submission' ), 10, 3 );
 		add_filter( 'htmlpp_page_html', array( $this, 'filter_page_html' ), 10, 4 );
-		new HTMLPP_Forms_Admin( $this );
+		new FFHPP_Admin( $this );
 	}
 
 	/**
 	 * Adapter by ID.
 	 *
 	 * @param string $id Adapter ID.
-	 * @return HTMLPP_Forms_Adapter|null
+	 * @return FFHPP_Adapter|null
 	 */
 	public function adapter( $id ) {
 		$id = strtolower( (string) $id );
@@ -146,12 +155,12 @@ class HTMLPP_Forms {
 	/**
 	 * Adapters whose form plugin is active.
 	 *
-	 * @return HTMLPP_Forms_Adapter[]
+	 * @return FFHPP_Adapter[]
 	 */
 	public function available_adapters() {
 		return array_filter(
 			$this->adapters,
-			static function ( HTMLPP_Forms_Adapter $adapter ) {
+			static function ( FFHPP_Adapter $adapter ) {
 				return $adapter->is_available();
 			}
 		);
@@ -160,23 +169,15 @@ class HTMLPP_Forms {
 	/**
 	 * Serve pages after form plugins have initialised.
 	 *
-	 * HTML Page Publisher serves at init priority 0, before form plugins
-	 * register their scripts and services (init, 10). Re-hooking the renderer
-	 * later in init keeps it ahead of WordPress's main query while letting
-	 * forms render normally.
+	 * HTML Page Publisher serves at init priority 0 by default, before form
+	 * plugins register their scripts and services (init, 10). A later init
+	 * priority keeps serving ahead of WordPress's main query while letting
+	 * forms render normally. Hooked on `htmlpp_serve_priority`.
+	 *
+	 * @param int $priority Priority requested so far.
+	 * @return int
 	 */
-	private function defer_renderer() {
-		$plugin = HTMLPP_Plugin::get_instance();
-		if ( empty( $plugin->renderer ) ) {
-			return;
-		}
-
-		$callback = array( $plugin->renderer, 'maybe_serve' );
-		$current  = has_action( 'init', $callback );
-		if ( false === $current ) {
-			return;
-		}
-
+	public static function serve_priority( $priority ) {
 		/**
 		 * Filter the init priority pages are served at when this add-on is active.
 		 *
@@ -184,13 +185,9 @@ class HTMLPP_Forms {
 		 *
 		 * @param int $priority Init priority. Default 20.
 		 */
-		$priority = (int) apply_filters( 'htmlpp_forms_serve_priority', 20 );
-		if ( $priority <= $current ) {
-			return;
-		}
-
-		remove_action( 'init', $callback, $current );
-		add_action( 'init', $callback, $priority );
+		$ours = apply_filters_deprecated( 'htmlpp_forms_serve_priority', array( 20 ), '0.7.0', 'ffhpp_serve_priority' );
+		$ours = (int) apply_filters( 'ffhpp_serve_priority', $ours );
+		return max( (int) $priority, $ours );
 	}
 
 	/**
@@ -238,10 +235,11 @@ class HTMLPP_Forms {
 			return;
 		}
 
-		$html = HTMLPP_Storage::get_contents( $file );
-		if ( false === $html ) {
+		$page = htmlpp()->pages->get( $slug, true );
+		if ( is_wp_error( $page ) || '' === $page['html'] ) {
 			return;
 		}
+		$html = $page['html'];
 
 		foreach ( self::placeholders( $html ) as $placeholder ) {
 			$adapter = $this->adapter( $placeholder['adapter'] );
@@ -299,7 +297,8 @@ class HTMLPP_Forms {
 				 * @param int    $form_id Form ID.
 				 * @param bool   $preview Whether this is a draft preview.
 				 */
-				$markup = (string) apply_filters( 'htmlpp_forms_form_markup', $markup, $adapter->id(), $placeholder['form_id'], $preview );
+				$markup = apply_filters_deprecated( 'htmlpp_forms_form_markup', array( $markup, $adapter->id(), $placeholder['form_id'], $preview ), '0.7.0', 'ffhpp_form_markup' );
+				$markup = (string) apply_filters( 'ffhpp_form_markup', $markup, $adapter->id(), $placeholder['form_id'], $preview );
 
 				$is_postback = null === $postback && $adapter->is_postback( $placeholder['form_id'] );
 				$markup      = self::decorate( $markup, $adapter, $flags, ! $is_postback );
@@ -394,7 +393,7 @@ class HTMLPP_Forms {
 					break;
 				case 'class':
 				case 'button_class':
-					$attrs[ $key ] = HTMLPP_Forms_Parser::classes( $value );
+					$attrs[ $key ] = FFHPP_Parser::classes( $value );
 					break;
 				case 'id':
 					$attrs['id'] = sanitize_html_class( $value );
@@ -410,13 +409,13 @@ class HTMLPP_Forms {
 	 * The markup is wrapped in a div (holding the id, since form plugins own
 	 * their <form> ids) unless it is a standalone postback document.
 	 *
-	 * @param string               $markup  Rendered form.
-	 * @param HTMLPP_Forms_Adapter $adapter Adapter.
-	 * @param array                $flags   Placeholder attributes.
-	 * @param bool                 $wrap    Whether to wrap the markup.
+	 * @param string        $markup  Rendered form.
+	 * @param FFHPP_Adapter $adapter Adapter.
+	 * @param array         $flags   Placeholder attributes.
+	 * @param bool          $wrap    Whether to wrap the markup.
 	 * @return string
 	 */
-	private static function decorate( $markup, HTMLPP_Forms_Adapter $adapter, array $flags, $wrap ) {
+	private static function decorate( $markup, FFHPP_Adapter $adapter, array $flags, $wrap ) {
 		if ( '' !== $flags['class'] ) {
 			$markup = self::add_class( $markup, '/<form\b[^>]*>/i', $flags['class'], 1 );
 		}
@@ -427,7 +426,7 @@ class HTMLPP_Forms {
 			return $markup;
 		}
 
-		$classes = 'htmlpp-forms-embed htmlpp-forms-embed--' . $adapter->id() . ( 'page' === $flags['styles'] ? ' htmlpp-forms-page-styles' : '' );
+		$classes = 'ffhpp-embed ffhpp-embed--' . $adapter->id() . ( 'page' === $flags['styles'] ? ' ffhpp-page-styles' : '' );
 		$id      = '' !== $flags['id'] ? ' id="' . esc_attr( $flags['id'] ) . '"' : '';
 		return '<div class="' . esc_attr( $classes ) . '"' . $id . '>' . $markup . '</div>';
 	}
@@ -466,11 +465,11 @@ class HTMLPP_Forms {
 	 * @return string
 	 */
 	private static function insert_base_styles( $html ) {
-		$css = file_get_contents( HTMLPP_FORMS_PLUGIN_DIR . 'assets/page-styles.css' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Local plugin file.
+		$css = file_get_contents( FFHPP_PLUGIN_DIR . 'assets/page-styles.css' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Local plugin file.
 		if ( ! $css ) {
 			return $html;
 		}
-		$style = "\n<style id=\"htmlpp-forms-page-styles\">\n" . trim( $css ) . "\n</style>\n";
+		$style = "\n<style id=\"ffhpp-page-styles\">\n" . trim( $css ) . "\n</style>\n";
 		if ( preg_match( '/<head\b[^>]*>/i', $html, $m, PREG_OFFSET_CAPTURE ) ) {
 			$at = $m[0][1] + strlen( $m[0][0] );
 			return substr( $html, 0, $at ) . $style . substr( $html, $at );
@@ -484,9 +483,9 @@ class HTMLPP_Forms {
 	 * Draft previews (seen only by editors, and never cached) get a visible
 	 * notice; published pages keep an HTML comment so visitors see nothing.
 	 *
-	 * @param array                     $placeholder Parsed placeholder.
-	 * @param HTMLPP_Forms_Adapter|null $adapter     Adapter, if known.
-	 * @param bool                      $preview     Whether this is a draft preview.
+	 * @param array              $placeholder Parsed placeholder.
+	 * @param FFHPP_Adapter|null $adapter     Adapter, if known.
+	 * @param bool               $preview     Whether this is a draft preview.
 	 * @return string
 	 */
 	private static function unavailable( array $placeholder, $adapter, $preview ) {
@@ -505,7 +504,7 @@ class HTMLPP_Forms {
 			return '<div role="alert" style="padding:12px 16px;border:2px dashed #d63638;background:#fcf0f1;color:#8a2424;font:14px/1.4 system-ui,sans-serif">'
 				. esc_html( $message ) . '</div>';
 		}
-		return '<!-- htmlpp-forms: ' . esc_html( $message ) . ' -->';
+		return '<!-- ffhpp: ' . esc_html( $message ) . ' -->';
 	}
 
 	/**
