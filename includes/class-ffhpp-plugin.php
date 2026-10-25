@@ -537,6 +537,8 @@ class FFHPP_Plugin {
 	 * @return string
 	 */
 	private static function inject_assets( $html ) {
+		self::ensure_jquery_source();
+
 		ob_start();
 		wp_styles()->do_items();
 		$styles = ob_get_clean();
@@ -547,6 +549,30 @@ class FFHPP_Plugin {
 
 		$html = self::insert_before( $html, '</head>', $styles, false );
 		return self::insert_before( $html, '</body>', $scripts, true );
+	}
+
+	/**
+	 * Supply core jQuery when a legacy theme replaced its handle with a stub.
+	 *
+	 * Some themes deregister `jquery`, register an empty handle in its place,
+	 * and print a CDN copy directly from footer.php. Published HTML pages bypass
+	 * the theme footer, leaving form scripts without jQuery. WordPress' normal
+	 * `jquery` alias also has no source, but it has dependencies; only an absent
+	 * alias or one with neither a source nor dependencies needs this fallback.
+	 *
+	 * This does not alter the theme's registration and only queues the bundled
+	 * core library in a generated page that contains a rendered form.
+	 *
+	 * @return void
+	 */
+	private static function ensure_jquery_source() {
+		$scripts = wp_scripts();
+		$jquery  = isset( $scripts->registered['jquery'] ) ? $scripts->registered['jquery'] : null;
+		$valid   = $jquery && ( ( false !== $jquery->src && '' !== $jquery->src ) || ! empty( $jquery->deps ) );
+
+		if ( ! $valid && isset( $scripts->registered['jquery-core'] ) ) {
+			wp_enqueue_script( 'jquery-core' );
+		}
 	}
 
 	/**

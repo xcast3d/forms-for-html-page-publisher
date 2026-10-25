@@ -216,6 +216,8 @@ First public release. Requires HTML Page Publisher 1.5.2 or later.
 * Detect and convert static HTML forms to Gravity Forms, Contact Form 7, or WPForms.
 * Preserve landing-page styling with `styles=page` and version-backed undo.
 * Render existing forms through explicit placeholders and provide WP-CLI commands.
+* Load WordPress's bundled jQuery when a legacy theme replaces the normal handle with an empty footer-loaded placeholder.
+* Keep broad landing-page heading styles from making Gravity Forms validation summaries unreadable.
 
 = 0.7.0 =
 * Requires HTML Page Publisher 1.5.2 or later. The add-on now uses only its public hooks and page service.
