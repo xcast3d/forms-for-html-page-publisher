@@ -192,11 +192,22 @@ class FFHPP_Admin {
 			}
 			$html = $full['html'];
 			FFHPP_Converter::flag( $page['slug'], $html ); // Catches pages uploaded before activation.
-			$forms = FFHPP_Parser::find_forms( $html );
-			if ( $forms ) {
+			$forms    = FFHPP_Parser::find_forms( $html );
+			$problems = array();
+			foreach ( FFHPP_Plugin::placeholders( $html ) as $placeholder ) {
+				$status = $this->forms->placeholder_status( $placeholder );
+				if ( 'ok' !== $status ) {
+					$problems[] = array(
+						'placeholder' => $placeholder,
+						'status'      => $status,
+					);
+				}
+			}
+			if ( $forms || $problems ) {
 				$results[] = array(
-					'page'  => $page,
-					'forms' => $forms,
+					'page'     => $page,
+					'forms'    => $forms,
+					'problems' => $problems,
 				);
 			}
 		}
@@ -210,10 +221,10 @@ class FFHPP_Admin {
 				<div class="notice notice-warning inline"><p><?php esc_html_e( 'Activate Gravity Forms, Contact Form 7 or WPForms to convert forms.', 'forms-for-html-page-publisher' ); ?></p></div>
 			<?php endif; ?>
 			<?php if ( ! $results ) : ?>
-				<div class="notice notice-success inline"><p><?php esc_html_e( 'No HTML forms found. All pages are clear.', 'forms-for-html-page-publisher' ); ?></p></div>
+				<div class="notice notice-success inline"><p><?php esc_html_e( 'No HTML forms or broken form placeholders found. All pages are clear.', 'forms-for-html-page-publisher' ); ?></p></div>
 			<?php endif; ?>
 			<?php foreach ( $results as $result ) : ?>
-				<?php $this->render_page( $result['page'], $result['forms'], $targets ); ?>
+				<?php $this->render_page( $result['page'], $result['forms'], $result['problems'], $targets ); ?>
 			<?php endforeach; ?>
 		</div>
 		<style>
@@ -290,11 +301,12 @@ class FFHPP_Admin {
 	/**
 	 * One page and its forms.
 	 *
-	 * @param array           $page    Page description.
-	 * @param array[]         $forms   Parsed forms.
-	 * @param FFHPP_Adapter[] $targets Plugins the user may convert to.
+	 * @param array           $page     Page description.
+	 * @param array[]         $forms    Parsed forms.
+	 * @param array[]         $problems Placeholders whose form can't be shown: placeholder, status.
+	 * @param FFHPP_Adapter[] $targets  Plugins the user may convert to.
 	 */
-	private function render_page( array $page, array $forms, array $targets ) {
+	private function render_page( array $page, array $forms, array $problems, array $targets ) {
 		?>
 		<div class="ffhpp-page">
 			<h2>
@@ -308,6 +320,17 @@ class FFHPP_Admin {
 					· <a href="<?php echo esc_url( $page['edit_url'] ); ?>"><?php esc_html_e( 'Edit HTML', 'forms-for-html-page-publisher' ); ?></a>
 				</small>
 			</h2>
+			<?php if ( $problems ) : ?>
+				<div class="notice notice-error inline ffhpp-problems">
+					<?php foreach ( $problems as $problem ) : ?>
+						<p>
+							<?php echo esc_html( $this->problem_message( $problem['placeholder'], $problem['status'] ) ); ?>
+							<br><code><?php echo esc_html( $problem['placeholder']['raw'] ); ?></code>
+						</p>
+					<?php endforeach; ?>
+					<p><em><?php esc_html_e( 'Visitors see nothing where these placeholders are; draft previews show a warning. Create or restore the form, or edit the page HTML to use an existing form ID.', 'forms-for-html-page-publisher' ); ?></em></p>
+				</div>
+			<?php endif; ?>
 			<?php foreach ( $forms as $form ) : ?>
 				<?php $this->render_form( $page, $form, count( $forms ), $targets ); ?>
 			<?php endforeach; ?>
@@ -441,6 +464,27 @@ class FFHPP_Admin {
 			<?php endif; ?>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Why a placeholder's form can't be shown.
+	 *
+	 * @param array  $placeholder Placeholder from FFHPP_Plugin::placeholders().
+	 * @param string $status      Status from FFHPP_Plugin::placeholder_status().
+	 * @return string
+	 */
+	private function problem_message( array $placeholder, $status ) {
+		$adapter = $this->forms->adapter( $placeholder['adapter'] );
+		if ( 'unknown plugin' === $status || ! $adapter ) {
+			/* translators: 1: plugin key from the placeholder, 2: form ID. */
+			return sprintf( __( 'Form placeholder found for an unknown form plugin “%1$s” (form ID %2$d).', 'forms-for-html-page-publisher' ), $placeholder['adapter'], $placeholder['form_id'] );
+		}
+		if ( 'plugin inactive' === $status ) {
+			/* translators: 1: form plugin name, 2: form ID. */
+			return sprintf( __( '%1$s placeholder found for form ID %2$d, but %1$s is not active.', 'forms-for-html-page-publisher' ), $adapter->label(), $placeholder['form_id'] );
+		}
+		/* translators: 1: form plugin name, 2: form ID. */
+		return sprintf( __( '%1$s placeholder found, but no active %1$s form has ID %2$d (it may not exist, be inactive or be in the trash).', 'forms-for-html-page-publisher' ), $adapter->label(), $placeholder['form_id'] );
 	}
 
 	/**

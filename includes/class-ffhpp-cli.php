@@ -286,16 +286,7 @@ class FFHPP_CLI extends WP_CLI_Command {
 		$problems = 0;
 		foreach ( $this->pages( $args ) as $page ) {
 			foreach ( FFHPP_Plugin::placeholders( $page['html'] ) as $placeholder ) {
-				$adapter = $this->forms()->adapter( $placeholder['adapter'] );
-				if ( ! $adapter ) {
-					$status = 'unknown plugin';
-				} elseif ( ! $adapter->is_available() ) {
-					$status = 'plugin inactive';
-				} elseif ( ! $adapter->form_exists( $placeholder['form_id'] ) ) {
-					$status = 'form missing';
-				} else {
-					$status = 'ok';
-				}
+				$status = $this->forms()->placeholder_status( $placeholder );
 				if ( 'ok' !== $status ) {
 					++$problems;
 				} elseif ( ! empty( $assoc_args['problems'] ) ) {

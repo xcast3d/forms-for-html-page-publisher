@@ -214,7 +214,25 @@ class FFHPP_Plugin {
 			'adapter' => strtolower( '' !== $m[1] ? $m[1] : $m[2] ),
 			'form_id' => (int) $m[3],
 			'flags'   => self::parse_attributes( $m[4] ),
+			'raw'     => $m[0],
 		);
+	}
+
+	/**
+	 * Whether a placeholder's form can be shown.
+	 *
+	 * @param array $placeholder Placeholder from placeholders().
+	 * @return string 'ok', 'unknown plugin', 'plugin inactive' or 'form missing'.
+	 */
+	public function placeholder_status( array $placeholder ) {
+		$adapter = $this->adapter( $placeholder['adapter'] );
+		if ( ! $adapter ) {
+			return 'unknown plugin';
+		}
+		if ( ! $adapter->is_available() ) {
+			return 'plugin inactive';
+		}
+		return $adapter->form_exists( $placeholder['form_id'] ) ? 'ok' : 'form missing';
 	}
 
 	/**

@@ -165,6 +165,7 @@ Filters and actions used the `htmlpp_forms_` prefix before 0.7.0 (for example `h
 * The Detect Forms count badge is cached instead of re-reading every page on each admin screen.
 * New prefix `ffhpp` for the add-on's own code: classes (`FFHPP_Adapter`…), filters and actions (`ffhpp_adapters`, `ffhpp_serve_priority`, `ffhpp_form_markup`, `ffhpp_consent_pattern`, `ffhpp_default_styles`, `ffhpp_form_converted`) and CSS classes (`ffhpp-embed`, `ffhpp-page-styles`). The `htmlpp_forms_*` hooks still work for this release, with a deprecation notice. Placeholders, WP-CLI commands (`wp htmlpp forms`) and converted forms are unchanged.
 * Detect Forms moved to `admin.php?page=ffhpp-detect-forms` (same menu location).
+* Detect Forms also lists form placeholders that can't be shown (no form with that ID, form plugin inactive, unknown plugin), with the placeholder code, so a page that silently shows no form is easy to spot.
 * Converting: text taken from the page (labels, choices, placeholders, button text) has any HTML tags removed, and square brackets in Contact Form 7 labels become parentheses so they can't be read as form-tags.
 
 = 0.6.0 =
