@@ -62,17 +62,23 @@ class FFHPP_Plugin {
 			return;
 		}
 		if ( ! function_exists( 'htmlpp' ) || ! defined( 'HTMLPP_VERSION' ) ) {
-			self::dependency_notice( __( 'Forms for HTML Page Publisher needs HTML Page Publisher to be active.', 'forms-for-html-page-publisher' ) );
+			self::dependency_notice(
+				static function () {
+					return __( 'Forms Converter Add-On for HTML Page Publisher needs HTML Page Publisher to be active.', 'forms-converter-add-on-for-html-page-publisher' );
+				}
+			);
 			return;
 		}
 		if ( version_compare( HTMLPP_VERSION, FFHPP_MIN_HTMLPP, '<' ) ) {
 			self::dependency_notice(
-				sprintf(
-					/* translators: 1: required version, 2: installed version. */
-					__( 'Forms for HTML Page Publisher needs HTML Page Publisher %1$s or later (installed: %2$s). Update HTML Page Publisher to use it.', 'forms-for-html-page-publisher' ),
-					FFHPP_MIN_HTMLPP,
-					HTMLPP_VERSION
-				)
+				static function () {
+					return sprintf(
+						/* translators: 1: required version, 2: installed version. */
+						__( 'Forms Converter Add-On for HTML Page Publisher needs HTML Page Publisher %1$s or later (installed: %2$s). Update HTML Page Publisher to use it.', 'forms-converter-add-on-for-html-page-publisher' ),
+						FFHPP_MIN_HTMLPP,
+						HTMLPP_VERSION
+					);
+				}
 			);
 			return;
 		}
@@ -85,7 +91,11 @@ class FFHPP_Plugin {
 		}
 
 		if ( ! self::$instance->available_adapters() ) {
-			self::dependency_notice( __( 'Forms for HTML Page Publisher needs Gravity Forms, Contact Form 7 or WPForms to be active.', 'forms-for-html-page-publisher' ) );
+			self::dependency_notice(
+				static function () {
+					return __( 'Forms Converter Add-On for HTML Page Publisher needs Gravity Forms, Contact Form 7 or WPForms to be active.', 'forms-converter-add-on-for-html-page-publisher' );
+				}
+			);
 		}
 	}
 
@@ -99,16 +109,21 @@ class FFHPP_Plugin {
 	}
 
 	/**
-	 * Show an admin notice to users who manage plugins.
+	 * Show a dismissible notice on the Plugins screen to users who manage
+	 * plugins (where the missing plugin or update is installed).
 	 *
-	 * @param string $message Message.
+	 * Boot runs on plugins_loaded, before translations may load (init), so the
+	 * message is built only when the notice is shown.
+	 *
+	 * @param callable $message Returns the translated message.
 	 */
-	private static function dependency_notice( $message ) {
+	private static function dependency_notice( callable $message ) {
 		add_action(
 			'admin_notices',
 			static function () use ( $message ) {
-				if ( current_user_can( 'activate_plugins' ) ) {
-					printf( '<div class="notice notice-warning"><p>%s</p></div>', esc_html( $message ) );
+				$screen = get_current_screen();
+				if ( $screen && 'plugins' === $screen->id && current_user_can( 'activate_plugins' ) ) {
+					printf( '<div class="notice notice-warning is-dismissible"><p>%s</p></div>', esc_html( call_user_func( $message ) ) );
 				}
 			}
 		);
@@ -479,15 +494,22 @@ class FFHPP_Plugin {
 	 * the landing page's own CSS (later in the document) wins any tie. Its
 	 * selectors use :where() for zero specificity.
 	 *
+	 * Registered and printed through WordPress's style API. It is printed on
+	 * its own (not queued) because the other form assets go at the end of
+	 * <head>, after the page's CSS.
+	 *
 	 * @param string $html Page HTML.
 	 * @return string
 	 */
 	private static function insert_base_styles( $html ) {
-		$css = file_get_contents( FFHPP_PLUGIN_DIR . 'assets/page-styles.css' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Local plugin file.
-		if ( ! $css ) {
+		wp_register_style( 'ffhpp-page-styles', FFHPP_PLUGIN_URL . 'assets/page-styles.css', array(), FFHPP_VERSION );
+		ob_start();
+		wp_styles()->do_items( array( 'ffhpp-page-styles' ) );
+		$style = ob_get_clean();
+		if ( '' === trim( $style ) ) {
 			return $html;
 		}
-		$style = "\n<style id=\"ffhpp-page-styles\">\n" . trim( $css ) . "\n</style>\n";
+		$style = "\n" . trim( $style ) . "\n";
 		if ( preg_match( '/<head\b[^>]*>/i', $html, $m, PREG_OFFSET_CAPTURE ) ) {
 			$at = $m[0][1] + strlen( $m[0][0] );
 			return substr( $html, 0, $at ) . $style . substr( $html, $at );
@@ -509,13 +531,13 @@ class FFHPP_Plugin {
 	private static function unavailable( array $placeholder, $adapter, $preview ) {
 		if ( ! $adapter ) {
 			/* translators: 1: placeholder plugin key, 2: form ID. */
-			$message = sprintf( __( 'Unknown form plugin “%1$s” for form %2$d.', 'forms-for-html-page-publisher' ), $placeholder['adapter'], $placeholder['form_id'] );
+			$message = sprintf( __( 'Unknown form plugin “%1$s” for form %2$d.', 'forms-converter-add-on-for-html-page-publisher' ), $placeholder['adapter'], $placeholder['form_id'] );
 		} elseif ( ! $adapter->is_available() ) {
 			/* translators: 1: form plugin name, 2: form ID. */
-			$message = sprintf( __( '%1$s is not active, so form %2$d could not be displayed.', 'forms-for-html-page-publisher' ), $adapter->label(), $placeholder['form_id'] );
+			$message = sprintf( __( '%1$s is not active, so form %2$d could not be displayed.', 'forms-converter-add-on-for-html-page-publisher' ), $adapter->label(), $placeholder['form_id'] );
 		} else {
 			/* translators: 1: form plugin name, 2: form ID. */
-			$message = sprintf( __( '%1$s form %2$d could not be displayed. Check that it exists and is active.', 'forms-for-html-page-publisher' ), $adapter->label(), $placeholder['form_id'] );
+			$message = sprintf( __( '%1$s form %2$d could not be displayed. Check that it exists and is active.', 'forms-converter-add-on-for-html-page-publisher' ), $adapter->label(), $placeholder['form_id'] );
 		}
 
 		if ( $preview ) {

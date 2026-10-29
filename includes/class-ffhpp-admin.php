@@ -23,6 +23,16 @@ class FFHPP_Admin {
 	const ACTION = 'ffhpp_convert';
 
 	/**
+	 * admin-post.php action that dismisses the HTML-forms notice.
+	 */
+	const DISMISS_ACTION = 'ffhpp_dismiss_notice';
+
+	/**
+	 * User meta: flagged-page count when the notice was last dismissed.
+	 */
+	const DISMISSED_META = 'ffhpp_notice_dismissed';
+
+	/**
 	 * Field kinds as shown in the preview.
 	 *
 	 * @var array<string, string>
@@ -35,6 +45,13 @@ class FFHPP_Admin {
 	 * @var FFHPP_Plugin
 	 */
 	private $forms;
+
+	/**
+	 * Detect Forms screen's hook suffix, once the submenu is added.
+	 *
+	 * @var string|false
+	 */
+	private $hook_suffix = false;
 
 	/**
 	 * Register hooks.
@@ -50,8 +67,10 @@ class FFHPP_Admin {
 			add_action( $hook, array( 'FFHPP_Converter', 'forget_flagged_count' ) );
 		}
 		add_action( 'admin_menu', array( $this, 'add_menu' ), 20 );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'admin_post_' . self::ACTION, array( $this, 'handle_convert' ) );
 		add_action( 'admin_notices', array( $this, 'upload_notice' ) );
+		add_action( 'admin_post_' . self::DISMISS_ACTION, array( $this, 'dismiss_notice' ) );
 	}
 
 	/**
@@ -97,14 +116,14 @@ class FFHPP_Admin {
 	 */
 	public function add_menu() {
 		$count = FFHPP_Converter::flagged_count();
-		$label = __( 'Detect Forms', 'forms-for-html-page-publisher' );
+		$label = __( 'Detect Forms', 'forms-converter-add-on-for-html-page-publisher' );
 		if ( $count ) {
 			$label .= sprintf( ' <span class="awaiting-mod">%d</span>', $count );
 		}
 
-		add_submenu_page(
+		$this->hook_suffix = add_submenu_page(
 			HTMLPP_Admin::PAGE_SLUG,
-			__( 'Detect Forms', 'forms-for-html-page-publisher' ),
+			__( 'Detect Forms', 'forms-converter-add-on-for-html-page-publisher' ),
 			$label,
 			HTMLPP_Plugin::capability(),
 			self::PAGE_SLUG,
@@ -113,29 +132,65 @@ class FFHPP_Admin {
 	}
 
 	/**
-	 * After an upload, point editors at pages that still contain HTML forms.
+	 * Load the screen's stylesheet and script on Detect Forms only.
+	 *
+	 * @param string $hook_suffix Current admin screen.
+	 */
+	public function enqueue_assets( $hook_suffix ) {
+		if ( ! $this->hook_suffix || $hook_suffix !== $this->hook_suffix ) {
+			return;
+		}
+		wp_enqueue_style( 'ffhpp-admin', FFHPP_PLUGIN_URL . 'assets/admin.css', array(), FFHPP_VERSION );
+		wp_enqueue_script( 'ffhpp-admin', FFHPP_PLUGIN_URL . 'assets/admin.js', array(), FFHPP_VERSION, true );
+	}
+
+	/**
+	 * On the HTML Pages list, point editors at pages that still contain HTML
+	 * forms. Dismissing it hides it for that user until more pages are flagged.
 	 */
 	public function upload_notice() {
 		$screen = get_current_screen();
-		if ( ! $screen || false === strpos( $screen->id, HTMLPP_Admin::PAGE_SLUG ) || ! current_user_can( HTMLPP_Plugin::capability() ) ) {
+		if ( ! $screen || 'toplevel_page_' . HTMLPP_Admin::PAGE_SLUG !== $screen->id || ! current_user_can( HTMLPP_Plugin::capability() ) ) {
 			return;
 		}
-		$count = FFHPP_Converter::flagged_count();
-		if ( ! $count ) {
+		$count     = FFHPP_Converter::flagged_count();
+		$dismissed = (int) get_user_meta( get_current_user_id(), self::DISMISSED_META, true );
+		if ( $count < $dismissed ) {
+			// Pages were converted since; a later upload should show the notice again.
+			update_user_meta( get_current_user_id(), self::DISMISSED_META, $count );
+		}
+		if ( ! $count || $count <= $dismissed ) {
 			return;
 		}
+		$dismiss = wp_nonce_url( add_query_arg( 'action', self::DISMISS_ACTION, admin_url( 'admin-post.php' ) ), self::DISMISS_ACTION );
 		printf(
-			'<div class="notice notice-info"><p>%s <a href="%s">%s</a></p></div>',
+			'<div class="notice notice-info"><p>%s <a href="%s">%s</a> · <a href="%s">%s</a></p></div>',
 			esc_html(
 				sprintf(
 					/* translators: %d: number of pages. */
-					_n( '%d page contains an HTML form that is not connected to a form plugin.', '%d pages contain HTML forms that are not connected to a form plugin.', $count, 'forms-for-html-page-publisher' ),
+					_n( '%d page contains an HTML form that is not connected to a form plugin.', '%d pages contain HTML forms that are not connected to a form plugin.', $count, 'forms-converter-add-on-for-html-page-publisher' ),
 					$count
 				)
 			),
 			esc_url( self::url() ),
-			esc_html__( 'Review in Detect Forms', 'forms-for-html-page-publisher' )
+			esc_html__( 'Review in Detect Forms', 'forms-converter-add-on-for-html-page-publisher' ),
+			esc_url( $dismiss ),
+			esc_html__( 'Dismiss', 'forms-converter-add-on-for-html-page-publisher' )
 		);
+	}
+
+	/**
+	 * Hide the HTML-forms notice for the current user until the number of
+	 * flagged pages goes up.
+	 */
+	public function dismiss_notice() {
+		check_admin_referer( self::DISMISS_ACTION );
+		if ( ! current_user_can( HTMLPP_Plugin::capability() ) ) {
+			wp_die( esc_html__( 'Sorry, you are not allowed to do that.', 'forms-converter-add-on-for-html-page-publisher' ), 403 );
+		}
+		update_user_meta( get_current_user_id(), self::DISMISSED_META, FFHPP_Converter::flagged_count() );
+		wp_safe_redirect( wp_get_referer() ? wp_get_referer() : admin_url( 'admin.php?page=' . HTMLPP_Admin::PAGE_SLUG ) );
+		exit;
 	}
 
 	/**
@@ -157,7 +212,7 @@ class FFHPP_Admin {
 		$target  = isset( $_POST['target'] ) ? sanitize_key( wp_unslash( $_POST['target'] ) ) : '';
 		$targets = $this->targets();
 		if ( ! isset( $targets[ $target ] ) ) {
-			wp_die( esc_html__( 'You are not allowed to create forms in that form plugin.', 'forms-for-html-page-publisher' ), 403 );
+			wp_die( esc_html__( 'You are not allowed to create forms in that form plugin.', 'forms-converter-add-on-for-html-page-publisher' ), 403 );
 		}
 		$adapter = $targets[ $target ];
 
@@ -214,46 +269,19 @@ class FFHPP_Admin {
 		$targets = $this->targets();
 		?>
 		<div class="wrap ffhpp-wrap">
-			<h1><?php esc_html_e( 'Detect Forms', 'forms-for-html-page-publisher' ); ?></h1>
-			<p><?php esc_html_e( 'Pages below contain HTML forms that do not submit anywhere in WordPress. Converting creates a form with the detected fields in the form plugin you choose and replaces that form in the page with a placeholder. The previous version is kept in the page’s history.', 'forms-for-html-page-publisher' ); ?></p>
+			<h1><?php esc_html_e( 'Detect Forms', 'forms-converter-add-on-for-html-page-publisher' ); ?></h1>
+			<p><?php esc_html_e( 'Pages below contain HTML forms that do not submit anywhere in WordPress. Converting creates a form with the detected fields in the form plugin you choose and replaces that form in the page with a placeholder. The previous version is kept in the page’s history.', 'forms-converter-add-on-for-html-page-publisher' ); ?></p>
 			<?php $this->render_notice(); ?>
 			<?php if ( ! $this->forms->available_adapters() ) : ?>
-				<div class="notice notice-warning inline"><p><?php esc_html_e( 'Activate Gravity Forms, Contact Form 7 or WPForms to convert forms.', 'forms-for-html-page-publisher' ); ?></p></div>
+				<div class="notice notice-warning inline"><p><?php esc_html_e( 'Activate Gravity Forms, Contact Form 7 or WPForms to convert forms.', 'forms-converter-add-on-for-html-page-publisher' ); ?></p></div>
 			<?php endif; ?>
 			<?php if ( ! $results ) : ?>
-				<div class="notice notice-success inline"><p><?php esc_html_e( 'No HTML forms or broken form placeholders found. All pages are clear.', 'forms-for-html-page-publisher' ); ?></p></div>
+				<div class="notice notice-success inline"><p><?php esc_html_e( 'No HTML forms or broken form placeholders found. All pages are clear.', 'forms-converter-add-on-for-html-page-publisher' ); ?></p></div>
 			<?php endif; ?>
 			<?php foreach ( $results as $result ) : ?>
 				<?php $this->render_page( $result['page'], $result['forms'], $result['problems'], $targets ); ?>
 			<?php endforeach; ?>
 		</div>
-		<style>
-			.ffhpp-wrap .ffhpp-page { background: #fff; border: 1px solid #c3c4c7; border-radius: 4px; padding: 0 16px 16px; margin: 16px 0; max-width: 1100px; }
-			.ffhpp-wrap .ffhpp-page h2 { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline; }
-			.ffhpp-wrap .ffhpp-page h2 small { font-weight: 400; font-size: 13px; }
-			.ffhpp-wrap .ffhpp-form { border-top: 1px solid #f0f0f1; padding-top: 12px; margin-top: 12px; }
-			.ffhpp-wrap .ffhpp-form h3 { margin: 0 0 6px; font-size: 14px; }
-			.ffhpp-wrap .ffhpp-meta { color: #50575e; margin: 0 0 10px; }
-			.ffhpp-wrap table.widefat { margin-bottom: 12px; }
-			.ffhpp-wrap .ffhpp-choices { color: #50575e; }
-			.ffhpp-wrap .ffhpp-external { color: #996800; }
-			.ffhpp-wrap .ffhpp-notes { margin: 0 0 12px; padding: 8px 12px; background: #f6f7f7; border-left: 4px solid #72aee6; }
-			.ffhpp-wrap .ffhpp-notes[hidden] { display: none; }
-			.ffhpp-wrap .ffhpp-notes p { margin: 4px 0; }
-			.ffhpp-wrap .ffhpp-convert { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-			@media (max-width: 782px) { .ffhpp-wrap table.widefat td:nth-child(4), .ffhpp-wrap table.widefat th:nth-child(4) { display: none; } }
-		</style>
-		<script>
-			document.addEventListener( 'change', function ( event ) {
-				if ( ! event.target.matches( '.ffhpp-target' ) ) {
-					return;
-				}
-				var form = event.target.closest( '.ffhpp-form' );
-				form.querySelectorAll( '.ffhpp-notes' ).forEach( function ( notes ) {
-					notes.hidden = notes.dataset.target !== event.target.value;
-				} );
-			} );
-		</script>
 		<?php
 	}
 
@@ -282,7 +310,7 @@ class FFHPP_Admin {
 			esc_html(
 				sprintf(
 					/* translators: 1: form plugin name, 2: form ID, 3: form title, 4: page slug. */
-					__( 'Created %1$s form #%2$d “%3$s” and placed it in “%4$s”.', 'forms-for-html-page-publisher' ),
+					__( 'Created %1$s form #%2$d “%3$s” and placed it in “%4$s”.', 'forms-converter-add-on-for-html-page-publisher' ),
 					$adapter->label(),
 					$notice['form_id'],
 					$notice['title'],
@@ -290,11 +318,11 @@ class FFHPP_Admin {
 				)
 			),
 			esc_url( $adapter->edit_url( $notice['form_id'] ) ),
-			esc_html__( 'Edit form', 'forms-for-html-page-publisher' ),
+			esc_html__( 'Edit form', 'forms-converter-add-on-for-html-page-publisher' ),
 			esc_url( $page['url'] ),
-			esc_html__( 'View page', 'forms-for-html-page-publisher' ),
+			esc_html__( 'View page', 'forms-converter-add-on-for-html-page-publisher' ),
 			esc_url( $page['edit_url'] ),
-			esc_html__( 'Undo from page history', 'forms-for-html-page-publisher' )
+			esc_html__( 'Undo from page history', 'forms-converter-add-on-for-html-page-publisher' )
 		);
 	}
 
@@ -314,10 +342,10 @@ class FFHPP_Admin {
 				<small>
 					<code><?php echo esc_html( $page['slug'] ); ?></code>
 					<?php if ( 'draft' === $page['status'] ) : ?>
-						— <?php esc_html_e( 'Draft', 'forms-for-html-page-publisher' ); ?>
+						— <?php esc_html_e( 'Draft', 'forms-converter-add-on-for-html-page-publisher' ); ?>
 					<?php endif; ?>
-					· <a href="<?php echo esc_url( $page['preview_url'] ? $page['preview_url'] : $page['url'] ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'View', 'forms-for-html-page-publisher' ); ?></a>
-					· <a href="<?php echo esc_url( $page['edit_url'] ); ?>"><?php esc_html_e( 'Edit HTML', 'forms-for-html-page-publisher' ); ?></a>
+					· <a href="<?php echo esc_url( $page['preview_url'] ? $page['preview_url'] : $page['url'] ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'View', 'forms-converter-add-on-for-html-page-publisher' ); ?></a>
+					· <a href="<?php echo esc_url( $page['edit_url'] ); ?>"><?php esc_html_e( 'Edit HTML', 'forms-converter-add-on-for-html-page-publisher' ); ?></a>
 				</small>
 			</h2>
 			<?php if ( $problems ) : ?>
@@ -328,7 +356,7 @@ class FFHPP_Admin {
 							<br><code><?php echo esc_html( $problem['placeholder']['raw'] ); ?></code>
 						</p>
 					<?php endforeach; ?>
-					<p><em><?php esc_html_e( 'Visitors see nothing where these placeholders are; draft previews show a warning. Create or restore the form, or edit the page HTML to use an existing form ID.', 'forms-for-html-page-publisher' ); ?></em></p>
+					<p><em><?php esc_html_e( 'Visitors see nothing where these placeholders are; draft previews show a warning. Create or restore the form, or edit the page HTML to use an existing form ID.', 'forms-converter-add-on-for-html-page-publisher' ); ?></em></p>
 				</div>
 			<?php endif; ?>
 			<?php foreach ( $forms as $form ) : ?>
@@ -350,7 +378,7 @@ class FFHPP_Admin {
 		$confirm = $form['external']
 			? sprintf(
 				/* translators: %s: external host name. */
-				__( 'This form currently sends data to %s. Converting replaces it, and that service will no longer receive submissions from this page. Continue?', 'forms-for-html-page-publisher' ),
+				__( 'This form currently sends data to %s. Converting replaces it, and that service will no longer receive submissions from this page. Continue?', 'forms-converter-add-on-for-html-page-publisher' ),
 				$form['external']
 			)
 			: '';
@@ -360,7 +388,7 @@ class FFHPP_Admin {
 			<h3>
 				<?php
 				/* translators: 1: form number, 2: total forms on the page. */
-				echo esc_html( sprintf( __( 'Form %1$d of %2$d', 'forms-for-html-page-publisher' ), $form['index'] + 1, $total ) );
+				echo esc_html( sprintf( __( 'Form %1$d of %2$d', 'forms-converter-add-on-for-html-page-publisher' ), $form['index'] + 1, $total ) );
 				?>
 			</h3>
 			<p class="ffhpp-meta">
@@ -368,7 +396,7 @@ class FFHPP_Admin {
 				echo esc_html(
 					sprintf(
 						/* translators: 1: number of fields, 2: submit button text. */
-						_n( '%1$d field · button “%2$s”', '%1$d fields · button “%2$s”', count( $form['fields'] ), 'forms-for-html-page-publisher' ),
+						_n( '%1$d field · button “%2$s”', '%1$d fields · button “%2$s”', count( $form['fields'] ), 'forms-converter-add-on-for-html-page-publisher' ),
 						count( $form['fields'] ),
 						$form['button']
 					)
@@ -379,16 +407,16 @@ class FFHPP_Admin {
 					<span class="ffhpp-external dashicons-before dashicons-warning">
 						<?php
 						/* translators: %s: external host name. */
-						echo esc_html( sprintf( __( 'Posts to external service: %s', 'forms-for-html-page-publisher' ), $form['external'] ) );
+						echo esc_html( sprintf( __( 'Posts to external service: %s', 'forms-converter-add-on-for-html-page-publisher' ), $form['external'] ) );
 						?>
 					</span>
 				<?php elseif ( '' !== $form['action'] && '#' !== $form['action'] ) : ?>
 					<?php
 					/* translators: %s: form action URL. */
-					echo esc_html( sprintf( __( 'Action: %s', 'forms-for-html-page-publisher' ), $form['action'] ) );
+					echo esc_html( sprintf( __( 'Action: %s', 'forms-converter-add-on-for-html-page-publisher' ), $form['action'] ) );
 					?>
 				<?php else : ?>
-					<?php esc_html_e( 'No working backend', 'forms-for-html-page-publisher' ); ?>
+					<?php esc_html_e( 'No working backend', 'forms-converter-add-on-for-html-page-publisher' ); ?>
 				<?php endif; ?>
 			</p>
 
@@ -396,10 +424,10 @@ class FFHPP_Admin {
 				<table class="widefat striped">
 					<thead>
 						<tr>
-							<th><?php esc_html_e( 'Label', 'forms-for-html-page-publisher' ); ?></th>
-							<th><?php esc_html_e( 'Field type', 'forms-for-html-page-publisher' ); ?></th>
-							<th><?php esc_html_e( 'Required', 'forms-for-html-page-publisher' ); ?></th>
-							<th><?php esc_html_e( 'HTML name', 'forms-for-html-page-publisher' ); ?></th>
+							<th><?php esc_html_e( 'Label', 'forms-converter-add-on-for-html-page-publisher' ); ?></th>
+							<th><?php esc_html_e( 'Field type', 'forms-converter-add-on-for-html-page-publisher' ); ?></th>
+							<th><?php esc_html_e( 'Required', 'forms-converter-add-on-for-html-page-publisher' ); ?></th>
+							<th><?php esc_html_e( 'HTML name', 'forms-converter-add-on-for-html-page-publisher' ); ?></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -414,7 +442,7 @@ class FFHPP_Admin {
 									<?php endif; ?>
 								</td>
 								<td><?php echo esc_html( self::kind_label( $field['type'] ) ); ?> <small>(<?php echo esc_html( $field['html_type'] ); ?>)</small></td>
-								<td><?php echo $field['required'] ? esc_html__( 'Yes', 'forms-for-html-page-publisher' ) : '—'; ?></td>
+								<td><?php echo $field['required'] ? esc_html__( 'Yes', 'forms-converter-add-on-for-html-page-publisher' ) : '—'; ?></td>
 								<td><code><?php echo esc_html( $field['name'] ); ?></code></td>
 							</tr>
 						<?php endforeach; ?>
@@ -432,11 +460,11 @@ class FFHPP_Admin {
 					<?php endif; ?>
 				<?php endforeach; ?>
 			<?php else : ?>
-				<p><?php esc_html_e( 'No supported fields were found in this form.', 'forms-for-html-page-publisher' ); ?></p>
+				<p><?php esc_html_e( 'No supported fields were found in this form.', 'forms-converter-add-on-for-html-page-publisher' ); ?></p>
 			<?php endif; ?>
 
 			<?php if ( $targets && $form['fields'] ) : ?>
-				<form class="ffhpp-convert" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"<?php echo $confirm ? ' onsubmit="return confirm(' . esc_attr( wp_json_encode( $confirm ) ) . ');"' : ''; ?>>
+				<form class="ffhpp-convert" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"<?php echo $confirm ? ' data-confirm="' . esc_attr( $confirm ) . '"' : ''; ?>>
 					<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION ); ?>">
 					<input type="hidden" name="slug" value="<?php echo esc_attr( $page['slug'] ); ?>">
 					<input type="hidden" name="form_index" value="<?php echo esc_attr( $form['index'] ); ?>">
@@ -444,23 +472,23 @@ class FFHPP_Admin {
 					<?php wp_nonce_field( self::ACTION . '_' . $page['slug'] ); ?>
 					<?php if ( count( $targets ) > 1 ) : ?>
 						<?php $select_id = 'ffhpp-target-' . $page['slug'] . '-' . $form['index']; ?>
-						<label for="<?php echo esc_attr( $select_id ); ?>"><?php esc_html_e( 'Convert to', 'forms-for-html-page-publisher' ); ?></label>
+						<label for="<?php echo esc_attr( $select_id ); ?>"><?php esc_html_e( 'Convert to', 'forms-converter-add-on-for-html-page-publisher' ); ?></label>
 						<select class="ffhpp-target" id="<?php echo esc_attr( $select_id ); ?>" name="target">
 							<?php foreach ( $targets as $adapter ) : ?>
 								<option value="<?php echo esc_attr( $adapter->id() ); ?>"><?php echo esc_html( $adapter->label() ); ?></option>
 							<?php endforeach; ?>
 						</select>
-						<?php submit_button( __( 'Convert', 'forms-for-html-page-publisher' ), 'primary', 'submit', false ); ?>
+						<?php submit_button( __( 'Convert', 'forms-converter-add-on-for-html-page-publisher' ), 'primary', 'submit', false ); ?>
 					<?php else : ?>
 						<input type="hidden" name="target" value="<?php echo esc_attr( $first ); ?>">
 						<?php
 						/* translators: %s: form plugin name. */
-						submit_button( sprintf( __( 'Convert to %s', 'forms-for-html-page-publisher' ), reset( $targets )->label() ), 'primary', 'submit', false );
+						submit_button( sprintf( __( 'Convert to %s', 'forms-converter-add-on-for-html-page-publisher' ), reset( $targets )->label() ), 'primary', 'submit', false );
 						?>
 					<?php endif; ?>
 				</form>
 			<?php elseif ( ! $targets ) : ?>
-				<p><em><?php esc_html_e( 'You need permission to edit page HTML and to create forms in an active form plugin to convert this form.', 'forms-for-html-page-publisher' ); ?></em></p>
+				<p><em><?php esc_html_e( 'You need permission to edit page HTML and to create forms in an active form plugin to convert this form.', 'forms-converter-add-on-for-html-page-publisher' ); ?></em></p>
 			<?php endif; ?>
 		</div>
 		<?php
@@ -477,14 +505,14 @@ class FFHPP_Admin {
 		$adapter = $this->forms->adapter( $placeholder['adapter'] );
 		if ( 'unknown plugin' === $status || ! $adapter ) {
 			/* translators: 1: plugin key from the placeholder, 2: form ID. */
-			return sprintf( __( 'Form placeholder found for an unknown form plugin “%1$s” (form ID %2$d).', 'forms-for-html-page-publisher' ), $placeholder['adapter'], $placeholder['form_id'] );
+			return sprintf( __( 'Form placeholder found for an unknown form plugin “%1$s” (form ID %2$d).', 'forms-converter-add-on-for-html-page-publisher' ), $placeholder['adapter'], $placeholder['form_id'] );
 		}
 		if ( 'plugin inactive' === $status ) {
 			/* translators: 1: form plugin name, 2: form ID. */
-			return sprintf( __( '%1$s placeholder found for form ID %2$d, but %1$s is not active.', 'forms-for-html-page-publisher' ), $adapter->label(), $placeholder['form_id'] );
+			return sprintf( __( '%1$s placeholder found for form ID %2$d, but %1$s is not active.', 'forms-converter-add-on-for-html-page-publisher' ), $adapter->label(), $placeholder['form_id'] );
 		}
 		/* translators: 1: form plugin name, 2: form ID. */
-		return sprintf( __( '%1$s placeholder found, but no active %1$s form has ID %2$d (it may not exist, be inactive or be in the trash).', 'forms-for-html-page-publisher' ), $adapter->label(), $placeholder['form_id'] );
+		return sprintf( __( '%1$s placeholder found, but no active %1$s form has ID %2$d (it may not exist, be inactive or be in the trash).', 'forms-converter-add-on-for-html-page-publisher' ), $adapter->label(), $placeholder['form_id'] );
 	}
 
 	/**
@@ -496,18 +524,18 @@ class FFHPP_Admin {
 	private static function kind_label( $kind ) {
 		if ( ! self::$kind_labels ) {
 			self::$kind_labels = array(
-				'text'     => __( 'Text', 'forms-for-html-page-publisher' ),
-				'email'    => __( 'Email', 'forms-for-html-page-publisher' ),
-				'tel'      => __( 'Phone', 'forms-for-html-page-publisher' ),
-				'url'      => __( 'Website', 'forms-for-html-page-publisher' ),
-				'number'   => __( 'Number', 'forms-for-html-page-publisher' ),
-				'date'     => __( 'Date', 'forms-for-html-page-publisher' ),
-				'hidden'   => __( 'Hidden', 'forms-for-html-page-publisher' ),
-				'textarea' => __( 'Paragraph text', 'forms-for-html-page-publisher' ),
-				'select'   => __( 'Drop-down', 'forms-for-html-page-publisher' ),
-				'radio'    => __( 'Radio buttons', 'forms-for-html-page-publisher' ),
-				'checkbox' => __( 'Checkboxes', 'forms-for-html-page-publisher' ),
-				'consent'  => __( 'Consent', 'forms-for-html-page-publisher' ),
+				'text'     => __( 'Text', 'forms-converter-add-on-for-html-page-publisher' ),
+				'email'    => __( 'Email', 'forms-converter-add-on-for-html-page-publisher' ),
+				'tel'      => __( 'Phone', 'forms-converter-add-on-for-html-page-publisher' ),
+				'url'      => __( 'Website', 'forms-converter-add-on-for-html-page-publisher' ),
+				'number'   => __( 'Number', 'forms-converter-add-on-for-html-page-publisher' ),
+				'date'     => __( 'Date', 'forms-converter-add-on-for-html-page-publisher' ),
+				'hidden'   => __( 'Hidden', 'forms-converter-add-on-for-html-page-publisher' ),
+				'textarea' => __( 'Paragraph text', 'forms-converter-add-on-for-html-page-publisher' ),
+				'select'   => __( 'Drop-down', 'forms-converter-add-on-for-html-page-publisher' ),
+				'radio'    => __( 'Radio buttons', 'forms-converter-add-on-for-html-page-publisher' ),
+				'checkbox' => __( 'Checkboxes', 'forms-converter-add-on-for-html-page-publisher' ),
+				'consent'  => __( 'Consent', 'forms-converter-add-on-for-html-page-publisher' ),
 			);
 		}
 		return isset( self::$kind_labels[ $kind ] ) ? self::$kind_labels[ $kind ] : $kind;

@@ -129,7 +129,7 @@ class FFHPP_Parser {
 			'method'       => $el ? strtolower( $el->getAttribute( 'method' ) ? $el->getAttribute( 'method' ) : 'get' ) : 'get',
 			'class'        => $el ? self::classes( $el->getAttribute( 'class' ) ) : '',
 			'id'           => $el ? sanitize_html_class( $el->getAttribute( 'id' ) ) : '',
-			'button'       => __( 'Submit', 'forms-for-html-page-publisher' ),
+			'button'       => __( 'Submit', 'forms-converter-add-on-for-html-page-publisher' ),
 			'button_class' => '',
 			'fields'       => array(),
 		);
@@ -300,7 +300,7 @@ class FFHPP_Parser {
 		$field['checkbox_label'] = $text;
 		$field['choices']        = array();
 		if ( $field['label'] === $text ) {
-			$field['label'] = __( 'Consent', 'forms-for-html-page-publisher' );
+			$field['label'] = __( 'Consent', 'forms-converter-add-on-for-html-page-publisher' );
 		}
 	}
 
@@ -317,7 +317,7 @@ class FFHPP_Parser {
 		return array(
 			'html_type'      => $html_type,
 			'type'           => self::$kinds[ $html_type ],
-			'label'          => '' !== $label ? $label : __( 'Untitled', 'forms-for-html-page-publisher' ),
+			'label'          => '' !== $label ? $label : __( 'Untitled', 'forms-converter-add-on-for-html-page-publisher' ),
 			'name'           => (string) $name,
 			'required'       => (bool) $required,
 			'placeholder'    => '',

@@ -190,6 +190,7 @@ class FFHPP_Adapter_Gravity extends FFHPP_Adapter {
 				'isRequired'  => $field['required'],
 				'inputName'   => $field['name'],
 				'placeholder' => $field['placeholder'],
+				'description' => '', // Gravity Forms reads it from saved field data (e.g. consent revisions).
 			);
 			if ( $field['choices'] ) {
 				$gf['choices'] = $field['choices'];
@@ -209,7 +210,7 @@ class FFHPP_Adapter_Gravity extends FFHPP_Adapter {
 				$gf['checkboxLabel'] = $field['checkbox_label'];
 				$gf['choices']       = array(
 					array(
-						'text'       => __( 'Checked', 'forms-for-html-page-publisher' ),
+						'text'       => __( 'Checked', 'forms-converter-add-on-for-html-page-publisher' ),
 						'value'      => '1',
 						'isSelected' => false,
 						'price'      => '',
@@ -218,18 +219,18 @@ class FFHPP_Adapter_Gravity extends FFHPP_Adapter {
 				$gf['inputs']        = array(
 					array(
 						'id'    => $id . '.1',
-						'label' => __( 'Consent', 'forms-for-html-page-publisher' ),
+						'label' => __( 'Consent', 'forms-converter-add-on-for-html-page-publisher' ),
 						'name'  => '',
 					),
 					array(
 						'id'       => $id . '.2',
-						'label'    => __( 'Text', 'forms-for-html-page-publisher' ),
+						'label'    => __( 'Text', 'forms-converter-add-on-for-html-page-publisher' ),
 						'name'     => '',
 						'isHidden' => true,
 					),
 					array(
 						'id'       => $id . '.3',
-						'label'    => __( 'Description', 'forms-for-html-page-publisher' ),
+						'label'    => __( 'Description', 'forms-converter-add-on-for-html-page-publisher' ),
 						'name'     => '',
 						'isHidden' => true,
 					),
@@ -265,11 +266,11 @@ class FFHPP_Adapter_Gravity extends FFHPP_Adapter {
 					$notification_id => array(
 						'id'       => $notification_id,
 						'isActive' => true,
-						'name'     => __( 'Admin Notification', 'forms-for-html-page-publisher' ),
+						'name'     => __( 'Admin Notification', 'forms-converter-add-on-for-html-page-publisher' ),
 						'event'    => 'form_submission',
 						'toType'   => 'email',
 						'to'       => '{admin_email}',
-						'subject'  => __( 'New submission from', 'forms-for-html-page-publisher' ) . ' {form_title}',
+						'subject'  => __( 'New submission from', 'forms-converter-add-on-for-html-page-publisher' ) . ' {form_title}',
 						'message'  => '{all_fields}',
 					),
 				),

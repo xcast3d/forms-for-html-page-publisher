@@ -1,0 +1,15 @@
+/* HTML Pages → Detect Forms (Forms Converter Add-On for HTML Page Publisher). */
+.ffhpp-wrap .ffhpp-page { background: #fff; border: 1px solid #c3c4c7; border-radius: 4px; padding: 0 16px 16px; margin: 16px 0; max-width: 1100px; }
+.ffhpp-wrap .ffhpp-page h2 { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline; }
+.ffhpp-wrap .ffhpp-page h2 small { font-weight: 400; font-size: 13px; }
+.ffhpp-wrap .ffhpp-form { border-top: 1px solid #f0f0f1; padding-top: 12px; margin-top: 12px; }
+.ffhpp-wrap .ffhpp-form h3 { margin: 0 0 6px; font-size: 14px; }
+.ffhpp-wrap .ffhpp-meta { color: #50575e; margin: 0 0 10px; }
+.ffhpp-wrap table.widefat { margin-bottom: 12px; }
+.ffhpp-wrap .ffhpp-choices { color: #50575e; }
+.ffhpp-wrap .ffhpp-external { color: #996800; }
+.ffhpp-wrap .ffhpp-notes { margin: 0 0 12px; padding: 8px 12px; background: #f6f7f7; border-left: 4px solid #72aee6; }
+.ffhpp-wrap .ffhpp-notes[hidden] { display: none; }
+.ffhpp-wrap .ffhpp-notes p { margin: 4px 0; }
+.ffhpp-wrap .ffhpp-convert { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+@media (max-width: 782px) { .ffhpp-wrap table.widefat td:nth-child(4), .ffhpp-wrap table.widefat th:nth-child(4) { display: none; } }
